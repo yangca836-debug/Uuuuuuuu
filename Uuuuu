@@ -7,6 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local Locations = {
     ["Map End"] = CFrame.new(33.3331032, -67.9328308, -2510.57715, 0.999545097, -2.5832827e-09, -0.0301589295, 1.39267953e-09, 1, -3.94986372e-08, 0.0301589295, 3.94386674e-08, 0.999545097),
     ["Arena"] = CFrame.new(27.5642376, 11.2955561, -509.157745, -0.241409495, -4.718686e-10, -0.970423341, 8.45322701e-11, 1, -5.07279108e-10, 0.970423341, -2.04494088e-10, -0.241409495),
+    ["Event"] = CFrame.new(-248.556366, -65.1312714, -2548.91724, 0.88119483, -5.11210061e-08, 0.472753257, 2.88672606e-08, 1, 5.43271277e-08, -0.472753257, -3.42256925e-08, 0.88119483),
     ["Zone 1"] = CFrame.new(35.5054817, -1.57340455, -124.744881, 0.29085061, -1.07463215e-07, 0.956768453, -1.57710875e-08, 1, 1.17113224e-07, -0.956768453, -4.91517334e-08, 0.29085061),
     ["Zone 2"] = CFrame.new(34.6311569, 19.2955589, -435.780548, -0.664142609, 1.94613676e-08, 0.74760592, 3.98135791e-09, 1, -2.24947101e-08, -0.74760592, -1.19632082e-08, -0.664142609),
     ["Zone 3"] = CFrame.new(34.4227715, -13.2044439, -621.031677, 0.97198689, 1.50919818e-10, 0.235035151, -1.40340157e-08, 1, 5.73954964e-08, -0.235035151, -5.90861582e-08, 0.97198689),
@@ -48,10 +49,10 @@ end
 -- [3] สร้าง UI (Premium Compact Size) -----------------------------------------
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 240, 0, 260) -- ขนาดเล็กลงมาก กะทัดรัด
-Main.Position = UDim2.new(0.5, -120, 0.5, -130)
+Main.Size = UDim2.new(0, 240, 0, 295)
+Main.Position = UDim2.new(0.5, -120, 0.5, -147)
 Main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-Main.BackgroundTransparency = 0.15 -- กระจกโปร่งแสง
+Main.BackgroundTransparency = 0.15
 Main.BorderSizePixel = 0
 Main.Active = true
 Main.Draggable = true
@@ -76,7 +77,7 @@ Title.Font = Enum.Font.GothamBlack
 Title.TextSize = 14
 Title.BackgroundTransparency = 1
 
--- ฟังก์ชันสร้างปุ่มพร้อม Hover Animation
+-- ฟังก์ชันสร้างปุ่ม
 local function CreateButton(parent, text, size, pos, bgColor, callback)
     local btn = Instance.new("TextButton", parent)
     btn.Size = size
@@ -89,9 +90,12 @@ local function CreateButton(parent, text, size, pos, bgColor, callback)
     btn.AutoButtonColor = false
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     
-    -- Animation ตอนเอาเมาส์ชี้
     btn.MouseEnter:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(bgColor.R*255 + 20, bgColor.G*255 + 20, bgColor.B*255 + 20)}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(
+            math.min(bgColor.R*255 + 20, 255)/255, 
+            math.min(bgColor.G*255 + 20, 255)/255, 
+            math.min(bgColor.B*255 + 20, 255)/255
+        )}):Play()
     end)
     btn.MouseLeave:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = bgColor}):Play()
@@ -102,25 +106,27 @@ local function CreateButton(parent, text, size, pos, bgColor, callback)
 end
 
 -- [4] จัดวางปุ่ม ---------------------------------------------------------------
--- ปุ่ม Fly Back (โดดเด่นสุด)
+-- ปุ่ม Fly Back
 CreateButton(Main, "🚀 Fly Back Slowly", UDim2.new(0, 220, 0, 30), UDim2.new(0, 10, 0, 35), Color3.fromRGB(0, 100, 200), function() FlySmooth(LocReturn, 15) end)
 
--- ปุ่ม Map End & Arena (แบ่งครึ่งซ้ายขวา)
+-- ปุ่ม Map End & Arena
 CreateButton(Main, "Map End", UDim2.new(0, 105, 0, 28), UDim2.new(0, 10, 0, 70), Color3.fromRGB(40, 40, 45), function() Teleport(Locations["Map End"]) end)
 CreateButton(Main, "Arena", UDim2.new(0, 105, 0, 28), UDim2.new(0, 125, 0, 70), Color3.fromRGB(150, 40, 40), function() Teleport(Locations["Arena"]) end)
 
--- พื้นที่สำหรับ Zone 1-10 (ใช้ Grid Layout)
+-- ปุ่ม Event (เปลี่ยนชื่อเป็น Event ตามคำขอ และใช้สีส้มทองให้ดูเด่น)
+CreateButton(Main, "⭐ Event", UDim2.new(0, 220, 0, 28), UDim2.new(0, 10, 0, 103), Color3.fromRGB(255, 140, 0), function() Teleport(Locations["Event"]) end)
+
+-- พื้นที่สำหรับ Zone 1-10
 local ZoneContainer = Instance.new("Frame", Main)
 ZoneContainer.Size = UDim2.new(0, 220, 0, 145)
-ZoneContainer.Position = UDim2.new(0, 10, 0, 105)
+ZoneContainer.Position = UDim2.new(0, 10, 0, 138)
 ZoneContainer.BackgroundTransparency = 1
 
 local GridLayout = Instance.new("UIGridLayout", ZoneContainer)
-GridLayout.CellSize = UDim2.new(0, 105, 0, 25) -- ขนาดปุ่มโซน
-GridLayout.CellPadding = UDim2.new(0, 10, 0, 5) -- ระยะห่าง
+GridLayout.CellSize = UDim2.new(0, 105, 0, 25)
+GridLayout.CellPadding = UDim2.new(0, 10, 0, 5)
 GridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- สร้างปุ่ม Zone 1-10 อัตโนมัติลงในตาราง
 for i = 1, 10 do
     local btn = CreateButton(ZoneContainer, "Zone " .. i, UDim2.new(0, 0, 0, 0), UDim2.new(0, 0, 0, 0), Color3.fromRGB(30, 30, 35), function()
         Teleport(Locations["Zone " .. i])
