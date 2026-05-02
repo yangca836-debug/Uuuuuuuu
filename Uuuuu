@@ -3,25 +3,23 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
--- [1] ข้อมูลพิกัด (CFrames) ----------------------------------------------------
 local Locations = {
     ["Map End"] = CFrame.new(33.3331032, -67.9328308, -2510.57715, 0.999545097, -2.5832827e-09, -0.0301589295, 1.39267953e-09, 1, -3.94986372e-08, 0.0301589295, 3.94386674e-08, 0.999545097),
-    ["Arena"] = CFrame.new(27.5642376, 11.2955561, -509.157745, -0.241409495, -4.718686e-10, -0.970423341, 8.45322701e-11, 1, -5.07279108e-10, 0.970423341, -2.04494088e-10, -0.241409495),
-    ["Event"] = CFrame.new(-248.556366, -65.1312714, -2548.91724, 0.88119483, -5.11210061e-08, 0.472753257, 2.88672606e-08, 1, 5.43271277e-08, -0.472753257, -3.42256925e-08, 0.88119483),
-    ["Zone 1"] = CFrame.new(35.5054817, -1.57340455, -124.744881, 0.29085061, -1.07463215e-07, 0.956768453, -1.57710875e-08, 1, 1.17113224e-07, -0.956768453, -4.91517334e-08, 0.29085061),
-    ["Zone 2"] = CFrame.new(34.6311569, 19.2955589, -435.780548, -0.664142609, 1.94613676e-08, 0.74760592, 3.98135791e-09, 1, -2.24947101e-08, -0.74760592, -1.19632082e-08, -0.664142609),
-    ["Zone 3"] = CFrame.new(34.4227715, -13.2044439, -621.031677, 0.97198689, 1.50919818e-10, 0.235035151, -1.40340157e-08, 1, 5.73954964e-08, -0.235035151, -5.90861582e-08, 0.97198689),
-    ["Zone 4"] = CFrame.new(25.9887066, -13.2044439, -832.478394, 0.64746815, 6.4343503e-08, -0.762092531, -1.14135489e-07, 1, -1.25386155e-08, 0.762092531, 9.51001553e-08, 0.64746815),
-    ["Zone 5"] = CFrame.new(35.3954544, 8.8687315, -1030.92908, -0.992101669, 1.08013403e-07, -0.125436559, 1.05558364e-07, 1, 2.62186504e-08, 0.125436559, 1.27706894e-08, -0.992101669),
-    ["Zone 6"] = CFrame.new(24.4058018, 8.86826992, -1198.17712, -0.872136474, -1.88021883e-08, -0.48926273, -9.63904512e-09, 1, -2.12475335e-08, 0.48926273, -1.38147227e-08, -0.872136474),
-    ["Zone 7"] = CFrame.new(29.7921677, -46.1512985, -1411.68274, 0.321714699, 7.50739844e-08, -0.94683665, -4.20820783e-08, 1, 6.49906866e-08, 0.94683665, 1.89363956e-08, 0.321714699),
-    ["Zone 8"] = CFrame.new(32.9463043, -120.151299, -1649.51013, -0.973641157, -3.46606566e-09, 0.228085294, -1.08038494e-08, 1, -3.09226706e-08, -0.228085294, -3.2571787e-08, -0.973641157),
-    ["Zone 9"] = CFrame.new(29.2538643, -107.151299, -1992.19507, -0.947697282, 2.23945182e-08, -0.319170535, 1.28341044e-08, 1, 3.20570699e-08, 0.319170535, 2.62841304e-08, -0.947697282),
+    ["Arena"]   = CFrame.new(27.5642376, 11.2955561, -509.157745, -0.241409495, -4.718686e-10, -0.970423341, 8.45322701e-11, 1, -5.07279108e-10, 0.970423341, -2.04494088e-10, -0.241409495),
+    ["Event"]   = CFrame.new(-248.556366, -65.1312714, -2548.91724, 0.88119483, -5.11210061e-08, 0.472753257, 2.88672606e-08, 1, 5.43271277e-08, -0.472753257, -3.42256925e-08, 0.88119483),
+    ["Zone 1"]  = CFrame.new(35.5054817, -1.57340455, -124.744881, 0.29085061, -1.07463215e-07, 0.956768453, -1.57710875e-08, 1, 1.17113224e-07, -0.956768453, -4.91517334e-08, 0.29085061),
+    ["Zone 2"]  = CFrame.new(34.6311569, 19.2955589, -435.780548, -0.664142609, 1.94613676e-08, 0.74760592, 3.98135791e-09, 1, -2.24947101e-08, -0.74760592, -1.19632082e-08, -0.664142609),
+    ["Zone 3"]  = CFrame.new(34.4227715, -13.2044439, -621.031677, 0.97198689, 1.50919818e-10, 0.235035151, -1.40340157e-08, 1, 5.73954964e-08, -0.235035151, -5.90861582e-08, 0.97198689),
+    ["Zone 4"]  = CFrame.new(25.9887066, -13.2044439, -832.478394, 0.64746815, 6.4343503e-08, -0.762092531, -1.14135489e-07, 1, -1.25386155e-08, 0.762092531, 9.51001553e-08, 0.64746815),
+    ["Zone 5"]  = CFrame.new(35.3954544, 8.8687315, -1030.92908, -0.992101669, 1.08013403e-07, -0.125436559, 1.05558364e-07, 1, 2.62186504e-08, 0.125436559, 1.27706894e-08, -0.992101669),
+    ["Zone 6"]  = CFrame.new(24.4058018, 8.86826992, -1198.17712, -0.872136474, -1.88021883e-08, -0.48926273, -9.63904512e-09, 1, -2.12475335e-08, 0.48926273, -1.38147227e-08, -0.872136474),
+    ["Zone 7"]  = CFrame.new(29.7921677, -46.1512985, -1411.68274, 0.321714699, 7.50739844e-08, -0.94683665, -4.20820783e-08, 1, 6.49906866e-08, 0.94683665, 1.89363956e-08, 0.321714699),
+    ["Zone 8"]  = CFrame.new(32.9463043, -120.151299, -1649.51013, -0.973641157, -3.46606566e-09, 0.228085294, -1.08038494e-08, 1, -3.09226706e-08, -0.228085294, -3.2571787e-08, -0.973641157),
+    ["Zone 9"]  = CFrame.new(29.2538643, -107.151299, -1992.19507, -0.947697282, 2.23945182e-08, -0.319170535, 1.28341044e-08, 1, 3.20570699e-08, 0.319170535, 2.62841304e-08, -0.947697282),
     ["Zone 10"] = CFrame.new(30.2563572, -84.9013062, -2257.66724, 0.970252633, 2.72497624e-09, -0.242094651, -7.2927322e-09, 1, -1.79715496e-08, 0.242094651, 1.92024761e-08, 0.970252633),
 }
 local LocReturn = CFrame.new(31.7642937, -1.57368922, -29.8660946, 0.986223578, 4.53617588e-08, 0.16541788, -4.99690316e-08, 1, 2.36907862e-08, -0.16541788, -3.16301829e-08, 0.986223578)
 
--- [2] ฟังก์ชันเคลื่อนที่ --------------------------------------------------------
 local function Teleport(cf)
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         LocalPlayer.Character.HumanoidRootPart.CFrame = cf
@@ -40,13 +38,13 @@ local function FlySmooth(targetCFrame, duration)
     local connection
     connection = RunService.RenderStepped:Connect(function()
         local t = math.min((tick() - startTime) / duration, 1)
-        local p = (1 - t)^2 * startPos + 2 * (1 - t) * t * controlPoint + t^2 * endPos
+        local p = (1-t)^2 * startPos + 2*(1-t)*t * controlPoint + t^2 * endPos
         Root.CFrame = CFrame.new(p, p + targetCFrame.LookVector)
         if t >= 1 then connection:Disconnect(); Root.Anchored = false end
     end)
 end
 
--- [3] สร้าง UI (Premium Compact Size) -----------------------------------------
+-- UI
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 local Main = Instance.new("Frame", ScreenGui)
 Main.Size = UDim2.new(0, 240, 0, 295)
@@ -58,26 +56,47 @@ Main.Active = true
 Main.Draggable = true
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 
--- เส้นขอบไล่สี (Gradient Stroke)
 local Stroke = Instance.new("UIStroke", Main)
 Stroke.Thickness = 2
-Stroke.Color = Color3.fromRGB(255, 255, 255)
 local Gradient = Instance.new("UIGradient", Stroke)
 Gradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 170, 255)),
     ColorSequenceKeypoint.new(1, Color3.fromRGB(170, 0, 255))
 })
 
--- หัวข้อ
-local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "STARFISH HUB"
+-- Title bar
+local TitleBar = Instance.new("Frame", Main)
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundTransparency = 1
+
+local Title = Instance.new("TextLabel", TitleBar)
+Title.Size = UDim2.new(1, -35, 1, 0)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.Text = "★STARFISH HUB"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBlack
 Title.TextSize = 14
 Title.BackgroundTransparency = 1
 
--- ฟังก์ชันสร้างปุ่ม
+-- ปุ่มพับ
+local MinBtn = Instance.new("TextButton", TitleBar)
+MinBtn.Size = UDim2.new(0, 26, 0, 22)
+MinBtn.Position = UDim2.new(1, -30, 0, 4)
+MinBtn.Text = "−"
+MinBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+MinBtn.Font = Enum.Font.GothamBlack
+MinBtn.TextSize = 16
+MinBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+MinBtn.AutoButtonColor = false
+MinBtn.BorderSizePixel = 0
+Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(0, 5)
+
+-- Content (ทุกอย่างนอกจาก TitleBar)
+local Content = Instance.new("Frame", Main)
+Content.Size = UDim2.new(1, 0, 1, -30)
+Content.Position = UDim2.new(0, 0, 0, 30)
+Content.BackgroundTransparency = 1
+
 local function CreateButton(parent, text, size, pos, bgColor, callback)
     local btn = Instance.new("TextButton", parent)
     btn.Size = size
@@ -89,37 +108,28 @@ local function CreateButton(parent, text, size, pos, bgColor, callback)
     btn.TextSize = 12
     btn.AutoButtonColor = false
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    
     btn.MouseEnter:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(
-            math.min(bgColor.R*255 + 20, 255)/255, 
-            math.min(bgColor.G*255 + 20, 255)/255, 
-            math.min(bgColor.B*255 + 20, 255)/255
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.new(
+            math.min(bgColor.R + 0.08, 1),
+            math.min(bgColor.G + 0.08, 1),
+            math.min(bgColor.B + 0.08, 1)
         )}):Play()
     end)
     btn.MouseLeave:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = bgColor}):Play()
     end)
-    
     btn.MouseButton1Click:Connect(callback)
     return btn
 end
 
--- [4] จัดวางปุ่ม ---------------------------------------------------------------
--- ปุ่ม Fly Back
-CreateButton(Main, "🚀 Fly Back Slowly", UDim2.new(0, 220, 0, 30), UDim2.new(0, 10, 0, 35), Color3.fromRGB(0, 100, 200), function() FlySmooth(LocReturn, 12) end)
+CreateButton(Content, " Fly Back Slowly", UDim2.new(0, 220, 0, 30), UDim2.new(0, 10, 0, 5), Color3.fromRGB(0, 100, 200), function() FlySmooth(LocReturn, 12) end)
+CreateButton(Content, "Map End", UDim2.new(0, 105, 0, 28), UDim2.new(0, 10, 0, 40), Color3.fromRGB(40, 40, 45), function() Teleport(Locations["Map End"]) end)
+CreateButton(Content, "Arena",   UDim2.new(0, 105, 0, 28), UDim2.new(0, 125, 0, 40), Color3.fromRGB(150, 40, 40), function() Teleport(Locations["Arena"]) end)
+CreateButton(Content, " Event", UDim2.new(0, 220, 0, 28), UDim2.new(0, 10, 0, 73), Color3.fromRGB(255, 140, 0), function() Teleport(Locations["Event"]) end)
 
--- ปุ่ม Map End & Arena
-CreateButton(Main, "Map End", UDim2.new(0, 105, 0, 28), UDim2.new(0, 10, 0, 70), Color3.fromRGB(40, 40, 45), function() Teleport(Locations["Map End"]) end)
-CreateButton(Main, "Arena", UDim2.new(0, 105, 0, 28), UDim2.new(0, 125, 0, 70), Color3.fromRGB(150, 40, 40), function() Teleport(Locations["Arena"]) end)
-
--- ปุ่ม Event (เปลี่ยนชื่อเป็น Event ตามคำขอ และใช้สีส้มทองให้ดูเด่น)
-CreateButton(Main, "⭐ Event", UDim2.new(0, 220, 0, 28), UDim2.new(0, 10, 0, 103), Color3.fromRGB(255, 140, 0), function() Teleport(Locations["Event"]) end)
-
--- พื้นที่สำหรับ Zone 1-10
-local ZoneContainer = Instance.new("Frame", Main)
+local ZoneContainer = Instance.new("Frame", Content)
 ZoneContainer.Size = UDim2.new(0, 220, 0, 145)
-ZoneContainer.Position = UDim2.new(0, 10, 0, 138)
+ZoneContainer.Position = UDim2.new(0, 10, 0, 108)
 ZoneContainer.BackgroundTransparency = 1
 
 local GridLayout = Instance.new("UIGridLayout", ZoneContainer)
@@ -128,8 +138,22 @@ GridLayout.CellPadding = UDim2.new(0, 10, 0, 5)
 GridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 for i = 1, 10 do
-    local btn = CreateButton(ZoneContainer, "Zone " .. i, UDim2.new(0, 0, 0, 0), UDim2.new(0, 0, 0, 0), Color3.fromRGB(30, 30, 35), function()
-        Teleport(Locations["Zone " .. i])
+    local btn = CreateButton(ZoneContainer, "Zone "..i, UDim2.new(0,0,0,0), UDim2.new(0,0,0,0), Color3.fromRGB(30, 30, 35), function()
+        Teleport(Locations["Zone "..i])
     end)
     btn.LayoutOrder = i
 end
+
+-- ฟังก์ชันพับ/ขยาย
+local minimized = false
+local fullSize = UDim2.new(0, 240, 0, 295)
+local miniSize = UDim2.new(0, 240, 0, 30)
+
+MinBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    TweenService:Create(Main, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = minimized and miniSize or fullSize
+    }):Play()
+    Content.Visible = not minimized
+    MinBtn.Text = minimized and "+" or "−"
+end)
