@@ -4,9 +4,9 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ===== KEY SYSTEM =====
-local CORRECT_KEY = "67"
+local CORRECT_KEY = "mix67"
 local keyVerified = false
-
+local CORRECT_KEY = \"mix67\"
 local KeyGui = Instance.new("ScreenGui", game.CoreGui)
 KeyGui.Name = "KeyGui"
 
