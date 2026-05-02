@@ -107,7 +107,7 @@ end
 
 -- [4] จัดวางปุ่ม ---------------------------------------------------------------
 -- ปุ่ม Fly Back
-CreateButton(Main, "🚀 Fly Back Slowly", UDim2.new(0, 220, 0, 30), UDim2.new(0, 10, 0, 35), Color3.fromRGB(0, 100, 200), function() FlySmooth(LocReturn, 15) end)
+CreateButton(Main, "🚀 Fly Back Slowly", UDim2.new(0, 220, 0, 30), UDim2.new(0, 10, 0, 35), Color3.fromRGB(0, 100, 200), function() FlySmooth(LocReturn, 12) end)
 
 -- ปุ่ม Map End & Arena
 CreateButton(Main, "Map End", UDim2.new(0, 105, 0, 28), UDim2.new(0, 10, 0, 70), Color3.fromRGB(40, 40, 45), function() Teleport(Locations["Map End"]) end)
