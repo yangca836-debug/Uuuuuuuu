@@ -1,22 +1,23 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- [1] ข้อมูลพิกัด (CFrames) ----------------------------------------------------
 local Locations = {
     ["Map End"] = CFrame.new(33.3331032, -67.9328308, -2510.57715, 0.999545097, -2.5832827e-09, -0.0301589295, 1.39267953e-09, 1, -3.94986372e-08, 0.0301589295, 3.94386674e-08, 0.999545097),
-    ["Arena"] = CFrame.new(27.5642376, 11.2955561, -509.157745, -0.241409495, -4.718686e-10, -0.970423341, 8.45322701e-11, 1, -5.07279108e-10, 0.970423341, -2.04494088e-10, -0.241409495),
-    ["Event"] = CFrame.new(-248.556366, -65.1312714, -2548.91724, 0.88119483, -5.11210061e-08, 0.472753257, 2.88672606e-08, 1, 5.43271277e-08, -0.472753257, -3.42256925e-08, 0.88119483),
-    ["Zone 1"] = CFrame.new(35.5054817, -1.57340455, -124.744881, 0.29085061, -1.07463215e-07, 0.956768453, -1.57710875e-08, 1, 1.17113224e-07, -0.956768453, -4.91517334e-08, 0.29085061),
-    ["Zone 2"] = CFrame.new(34.6311569, 19.2955589, -435.780548, -0.664142609, 1.94613676e-08, 0.74760592, 3.98135791e-09, 1, -2.24947101e-08, -0.74760592, -1.19632082e-08, -0.664142609),
-    ["Zone 3"] = CFrame.new(34.4227715, -13.2044439, -621.031677, 0.97198689, 1.50919818e-10, 0.235035151, -1.40340157e-08, 1, 5.73954964e-08, -0.235035151, -5.90861582e-08, 0.97198689),
-    ["Zone 4"] = CFrame.new(25.9887066, -13.2044439, -832.478394, 0.64746815, 6.4343503e-08, -0.762092531, -1.14135489e-07, 1, -1.25386155e-08, 0.762092531, 9.51001553e-08, 0.64746815),
-    ["Zone 5"] = CFrame.new(35.3954544, 8.8687315, -1030.92908, -0.992101669, 1.08013403e-07, -0.125436559, 1.05558364e-07, 1, 2.62186504e-08, 0.125436559, 1.27706894e-08, -0.992101669),
-    ["Zone 6"] = CFrame.new(24.4058018, 8.86826992, -1198.17712, -0.872136474, -1.88021883e-08, -0.48926273, -9.63904512e-09, 1, -2.12475335e-08, 0.48926273, -1.38147227e-08, -0.872136474),
-    ["Zone 7"] = CFrame.new(29.7921677, -46.1512985, -1411.68274, 0.321714699, 7.50739844e-08, -0.94683665, -4.20820783e-08, 1, 6.49906866e-08, 0.94683665, 1.89363956e-08, 0.321714699),
-    ["Zone 8"] = CFrame.new(32.9463043, -120.151299, -1649.51013, -0.973641157, -3.46606566e-09, 0.228085294, -1.08038494e-08, 1, -3.09226706e-08, -0.228085294, -3.2571787e-08, -0.973641157),
-    ["Zone 9"] = CFrame.new(29.2538643, -107.151299, -1992.19507, -0.947697282, 2.23945182e-08, -0.319170535, 1.28341044e-08, 1, 3.20570699e-08, 0.319170535, 2.62841304e-08, -0.947697282),
+    ["Arena"]   = CFrame.new(27.5642376, 11.2955561, -509.157745, -0.241409495, -4.718686e-10, -0.970423341, 8.45322701e-11, 1, -5.07279108e-10, 0.970423341, -2.04494088e-10, -0.241409495),
+    ["Event"]   = CFrame.new(-248.556366, -65.1312714, -2548.91724, 0.88119483, -5.11210061e-08, 0.472753257, 2.88672606e-08, 1, 5.43271277e-08, -0.472753257, -3.42256925e-08, 0.88119483),
+    ["Zone 1"]  = CFrame.new(35.5054817, -1.57340455, -124.744881, 0.29085061, -1.07463215e-07, 0.956768453, -1.57710875e-08, 1, 1.17113224e-07, -0.956768453, -4.91517334e-08, 0.29085061),
+    ["Zone 2"]  = CFrame.new(34.6311569, 19.2955589, -435.780548, -0.664142609, 1.94613676e-08, 0.74760592, 3.98135791e-09, 1, -2.24947101e-08, -0.74760592, -1.19632082e-08, -0.664142609),
+    ["Zone 3"]  = CFrame.new(34.4227715, -13.2044439, -621.031677, 0.97198689, 1.50919818e-10, 0.235035151, -1.40340157e-08, 1, 5.73954964e-08, -0.235035151, -5.90861582e-08, 0.97198689),
+    ["Zone 4"]  = CFrame.new(25.9887066, -13.2044439, -832.478394, 0.64746815, 6.4343503e-08, -0.762092531, -1.14135489e-07, 1, -1.25386155e-08, 0.762092531, 9.51001553e-08, 0.64746815),
+    ["Zone 5"]  = CFrame.new(35.3954544, 8.8687315, -1030.92908, -0.992101669, 1.08013403e-07, -0.125436559, 1.05558364e-07, 1, 2.62186504e-08, 0.125436559, 1.27706894e-08, -0.992101669),
+    ["Zone 6"]  = CFrame.new(24.4058018, 8.86826992, -1198.17712, -0.872136474, -1.88021883e-08, -0.48926273, -9.63904512e-09, 1, -2.12475335e-08, 0.48926273, -1.38147227e-08, -0.872136474),
+    ["Zone 7"]  = CFrame.new(29.7921677, -46.1512985, -1411.68274, 0.321714699, 7.50739844e-08, -0.94683665, -4.20820783e-08, 1, 6.49906866e-08, 0.94683665, 1.89363956e-08, 0.321714699),
+    ["Zone 8"]  = CFrame.new(32.9463043, -120.151299, -1649.51013, -0.973641157, -3.46606566e-09, 0.228085294, -1.08038494e-08, 1, -3.09226706e-08, -0.228085294, -3.2571787e-08, -0.973641157),
+    ["Zone 9"]  = CFrame.new(29.2538643, -107.151299, -1992.19507, -0.947697282, 2.23945182e-08, -0.319170535, 1.28341044e-08, 1, 3.20570699e-08, 0.319170535, 2.62841304e-08, -0.947697282),
     ["Zone 10"] = CFrame.new(30.2563572, -84.9013062, -2257.66724, 0.970252633, 2.72497624e-09, -0.242094651, -7.2927322e-09, 1, -1.79715496e-08, 0.242094651, 1.92024761e-08, 0.970252633),
 }
 local LocReturn = CFrame.new(31.7642937, -1.57368922, -29.8660946, 0.986223578, 4.53617588e-08, 0.16541788, -4.99690316e-08, 1, 2.36907862e-08, -0.16541788, -3.16301829e-08, 0.986223578)
@@ -46,90 +47,291 @@ local function FlySmooth(targetCFrame, duration)
     end)
 end
 
--- [3] สร้าง UI (Premium Compact Size) -----------------------------------------
+-- [3] สร้าง UI ------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- ToggleButton (ปุ่มเปิด/ปิด UI ลอยๆ ด้านซ้าย)
+local ToggleBtn = Instance.new("TextButton", ScreenGui)
+ToggleBtn.Size = UDim2.new(0, 38, 0, 38)
+ToggleBtn.Position = UDim2.new(0, 12, 0.5, -19)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(10, 10, 16)
+ToggleBtn.Text = "✦"
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 200, 255)
+ToggleBtn.Font = Enum.Font.GothamBlack
+ToggleBtn.TextSize = 18
+ToggleBtn.AutoButtonColor = false
+ToggleBtn.BorderSizePixel = 0
+ToggleBtn.ZIndex = 10
+local TCorner = Instance.new("UICorner", ToggleBtn)
+TCorner.CornerRadius = UDim.new(0, 10)
+local TStroke = Instance.new("UIStroke", ToggleBtn)
+TStroke.Thickness = 1.5
+TStroke.Color = Color3.fromRGB(0, 180, 255)
+
+-- Main Frame
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 240, 0, 295)
-Main.Position = UDim2.new(0.5, -120, 0.5, -147)
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-Main.BackgroundTransparency = 0.15
+Main.Size = UDim2.new(0, 252, 0, 310)
+Main.Position = UDim2.new(0.5, -126, 0.5, -155)
+Main.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
+Main.BackgroundTransparency = 0.05
 Main.BorderSizePixel = 0
 Main.Active = true
 Main.Draggable = true
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 14)
 
--- เส้นขอบไล่สี (Gradient Stroke)
+-- Gradient Stroke
 local Stroke = Instance.new("UIStroke", Main)
-Stroke.Thickness = 2
-Stroke.Color = Color3.fromRGB(255, 255, 255)
+Stroke.Thickness = 1.5
 local Gradient = Instance.new("UIGradient", Stroke)
 Gradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 170, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(170, 0, 255))
+    ColorSequenceKeypoint.new(0,   Color3.fromRGB(0, 200, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 60, 255)),
+    ColorSequenceKeypoint.new(1,   Color3.fromRGB(255, 60, 160)),
 })
+Gradient.Rotation = 90
 
--- หัวข้อ
-local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 30)
+-- Background inner glow
+local BgGlow = Instance.new("Frame", Main)
+BgGlow.Size = UDim2.new(1, 0, 0, 52)
+BgGlow.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+BgGlow.BackgroundTransparency = 0.88
+BgGlow.BorderSizePixel = 0
+BgGlow.ZIndex = 0
+Instance.new("UICorner", BgGlow).CornerRadius = UDim.new(0, 14)
+
+-- Header bar
+local Header = Instance.new("Frame", Main)
+Header.Size = UDim2.new(1, 0, 0, 44)
+Header.BackgroundTransparency = 1
+
+-- Icon
+local Icon = Instance.new("TextLabel", Header)
+Icon.Size = UDim2.new(0, 32, 0, 32)
+Icon.Position = UDim2.new(0, 12, 0, 6)
+Icon.Text = "✦"
+Icon.TextColor3 = Color3.fromRGB(0, 200, 255)
+Icon.Font = Enum.Font.GothamBlack
+Icon.TextSize = 20
+Icon.BackgroundTransparency = 1
+
+-- Title
+local Title = Instance.new("TextLabel", Header)
+Title.Size = UDim2.new(0, 140, 1, 0)
+Title.Position = UDim2.new(0, 42, 0, 0)
 Title.Text = "STARFISH HUB"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBlack
-Title.TextSize = 14
+Title.TextSize = 13
+Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
 
--- ฟังก์ชันสร้างปุ่ม
-local function CreateButton(parent, text, size, pos, bgColor, callback)
+-- Subtitle
+local Sub = Instance.new("TextLabel", Header)
+Sub.Size = UDim2.new(0, 140, 0, 14)
+Sub.Position = UDim2.new(0, 43, 0, 24)
+Sub.Text = "Teleport System"
+Sub.TextColor3 = Color3.fromRGB(0, 180, 255)
+Sub.Font = Enum.Font.Gotham
+Sub.TextSize = 10
+Sub.TextXAlignment = Enum.TextXAlignment.Left
+Sub.BackgroundTransparency = 1
+
+-- Minimize Button (−)
+local MinBtn = Instance.new("TextButton", Header)
+MinBtn.Size = UDim2.new(0, 26, 0, 26)
+MinBtn.Position = UDim2.new(1, -62, 0, 9)
+MinBtn.Text = "−"
+MinBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+MinBtn.Font = Enum.Font.GothamBlack
+MinBtn.TextSize = 16
+MinBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+MinBtn.AutoButtonColor = false
+MinBtn.BorderSizePixel = 0
+Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(0, 6)
+
+-- Close Button (✕)
+local CloseBtn = Instance.new("TextButton", Header)
+CloseBtn.Size = UDim2.new(0, 26, 0, 26)
+CloseBtn.Position = UDim2.new(1, -30, 0, 9)
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 80, 100)
+CloseBtn.Font = Enum.Font.GothamBlack
+CloseBtn.TextSize = 12
+CloseBtn.BackgroundColor3 = Color3.fromRGB(60, 20, 28)
+CloseBtn.AutoButtonColor = false
+CloseBtn.BorderSizePixel = 0
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+
+-- Divider
+local Divider = Instance.new("Frame", Main)
+Divider.Size = UDim2.new(1, -20, 0, 1)
+Divider.Position = UDim2.new(0, 10, 0, 46)
+Divider.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+Divider.BorderSizePixel = 0
+
+-- Content Frame
+local Content = Instance.new("Frame", Main)
+Content.Size = UDim2.new(1, 0, 1, -52)
+Content.Position = UDim2.new(0, 0, 0, 52)
+Content.BackgroundTransparency = 1
+
+-- [4] Helper: สร้างปุ่ม ----------------------------------------------------------
+local function MakeBtn(parent, text, size, pos, bgColor, callback)
     local btn = Instance.new("TextButton", parent)
     btn.Size = size
     btn.Position = pos
     btn.BackgroundColor3 = bgColor
     btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(240, 240, 240)
+    btn.TextColor3 = Color3.fromRGB(235, 235, 235)
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 12
+    btn.TextSize = 11
     btn.AutoButtonColor = false
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    
+    btn.BorderSizePixel = 0
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 7)
+
+    -- Hover glow stroke
+    local btnStroke = Instance.new("UIStroke", btn)
+    btnStroke.Thickness = 1
+    btnStroke.Color = Color3.fromRGB(0, 0, 0)
+    btnStroke.Transparency = 1
+
     btn.MouseEnter:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(
-            math.min(bgColor.R*255 + 20, 255)/255, 
-            math.min(bgColor.G*255 + 20, 255)/255, 
-            math.min(bgColor.B*255 + 20, 255)/255
-        )}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.18), {
+            BackgroundColor3 = Color3.new(
+                math.min(bgColor.R + 0.1, 1),
+                math.min(bgColor.G + 0.1, 1),
+                math.min(bgColor.B + 0.1, 1)
+            )
+        }):Play()
+        TweenService:Create(btnStroke, TweenInfo.new(0.18), {Transparency = 0.3, Color = Color3.fromRGB(255,255,255)}):Play()
     end)
     btn.MouseLeave:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = bgColor}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.18), {BackgroundColor3 = bgColor}):Play()
+        TweenService:Create(btnStroke, TweenInfo.new(0.18), {Transparency = 1}):Play()
     end)
-    
+    btn.MouseButton1Down:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.08), {Size = UDim2.new(size.X.Scale, size.X.Offset - 4, size.Y.Scale, size.Y.Offset - 2)}):Play()
+    end)
+    btn.MouseButton1Up:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.08), {Size = size}):Play()
+    end)
     btn.MouseButton1Click:Connect(callback)
     return btn
 end
 
--- [4] จัดวางปุ่ม ---------------------------------------------------------------
--- ปุ่ม Fly Back
-CreateButton(Main, "🚀 Fly Back Slowly", UDim2.new(0, 220, 0, 30), UDim2.new(0, 10, 0, 35), Color3.fromRGB(0, 100, 200), function() FlySmooth(LocReturn, 12) end)
+-- [5] จัดวางปุ่ม ---------------------------------------------------------------
+-- Fly Back
+MakeBtn(Content, "🚀  Fly Back Slowly", UDim2.new(0, 232, 0, 32), UDim2.new(0, 10, 0, 6),
+    Color3.fromRGB(0, 110, 220), function() FlySmooth(LocReturn, 12) end)
 
--- ปุ่ม Map End & Arena
-CreateButton(Main, "Map End", UDim2.new(0, 105, 0, 28), UDim2.new(0, 10, 0, 70), Color3.fromRGB(40, 40, 45), function() Teleport(Locations["Map End"]) end)
-CreateButton(Main, "Arena", UDim2.new(0, 105, 0, 28), UDim2.new(0, 125, 0, 70), Color3.fromRGB(150, 40, 40), function() Teleport(Locations["Arena"]) end)
+-- Map End & Arena
+MakeBtn(Content, "📍 Map End", UDim2.new(0, 110, 0, 28), UDim2.new(0, 10, 0, 44),
+    Color3.fromRGB(28, 28, 40), function() Teleport(Locations["Map End"]) end)
+MakeBtn(Content, "⚔️ Arena",   UDim2.new(0, 110, 0, 28), UDim2.new(0, 132, 0, 44),
+    Color3.fromRGB(140, 28, 40), function() Teleport(Locations["Arena"]) end)
 
--- ปุ่ม Event (เปลี่ยนชื่อเป็น Event ตามคำขอ และใช้สีส้มทองให้ดูเด่น)
-CreateButton(Main, "⭐ Event", UDim2.new(0, 220, 0, 28), UDim2.new(0, 10, 0, 103), Color3.fromRGB(255, 140, 0), function() Teleport(Locations["Event"]) end)
+-- Event
+MakeBtn(Content, "⭐  Event", UDim2.new(0, 232, 0, 28), UDim2.new(0, 10, 0, 78),
+    Color3.fromRGB(210, 110, 0), function() Teleport(Locations["Event"]) end)
 
--- พื้นที่สำหรับ Zone 1-10
-local ZoneContainer = Instance.new("Frame", Main)
-ZoneContainer.Size = UDim2.new(0, 220, 0, 145)
-ZoneContainer.Position = UDim2.new(0, 10, 0, 138)
+-- Zone label
+local ZoneLabel = Instance.new("TextLabel", Content)
+ZoneLabel.Size = UDim2.new(0, 232, 0, 16)
+ZoneLabel.Position = UDim2.new(0, 10, 0, 112)
+ZoneLabel.Text = "ZONES"
+ZoneLabel.TextColor3 = Color3.fromRGB(80, 160, 255)
+ZoneLabel.Font = Enum.Font.GothamBlack
+ZoneLabel.TextSize = 9
+ZoneLabel.TextXAlignment = Enum.TextXAlignment.Left
+ZoneLabel.BackgroundTransparency = 1
+ZoneLabel.LetterSpacing = 3
+
+-- Zone Grid
+local ZoneContainer = Instance.new("Frame", Content)
+ZoneContainer.Size = UDim2.new(0, 232, 0, 148)
+ZoneContainer.Position = UDim2.new(0, 10, 0, 130)
 ZoneContainer.BackgroundTransparency = 1
 
 local GridLayout = Instance.new("UIGridLayout", ZoneContainer)
-GridLayout.CellSize = UDim2.new(0, 105, 0, 25)
-GridLayout.CellPadding = UDim2.new(0, 10, 0, 5)
+GridLayout.CellSize = UDim2.new(0, 110, 0, 26)
+GridLayout.CellPadding = UDim2.new(0, 12, 0, 6)
 GridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
+local zoneColors = {
+    Color3.fromRGB(20, 80, 160),
+    Color3.fromRGB(20, 100, 80),
+    Color3.fromRGB(100, 40, 140),
+    Color3.fromRGB(140, 70, 20),
+    Color3.fromRGB(20, 110, 110),
+    Color3.fromRGB(120, 30, 60),
+    Color3.fromRGB(40, 100, 40),
+    Color3.fromRGB(100, 80, 20),
+    Color3.fromRGB(60, 40, 140),
+    Color3.fromRGB(0, 100, 140),
+}
 for i = 1, 10 do
-    local btn = CreateButton(ZoneContainer, "Zone " .. i, UDim2.new(0, 0, 0, 0), UDim2.new(0, 0, 0, 0), Color3.fromRGB(30, 30, 35), function()
-        Teleport(Locations["Zone " .. i])
-    end)
+    local btn = MakeBtn(ZoneContainer, "Zone " .. i,
+        UDim2.new(0, 0, 0, 0), UDim2.new(0, 0, 0, 0),
+        zoneColors[i], function() Teleport(Locations["Zone " .. i]) end)
     btn.LayoutOrder = i
 end
+
+-- [6] Toggle / Minimize / Close Logic -------------------------------------------
+local isVisible = true
+local isMinimized = false
+
+-- เปิด/ปิด UI ด้วย ToggleBtn
+ToggleBtn.MouseButton1Click:Connect(function()
+    isVisible = not isVisible
+    TweenService:Create(Main, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
+        Size = isVisible and UDim2.new(0, 252, 0, 310) or UDim2.new(0, 252, 0, 0),
+        BackgroundTransparency = isVisible and 0.05 or 1,
+    }):Play()
+    Main.Visible = true
+    task.delay(0.25, function()
+        if not isVisible then Main.Visible = false end
+    end)
+    ToggleBtn.Text = isVisible and "✦" or "✧"
+    TweenService:Create(TStroke, TweenInfo.new(0.2), {
+        Color = isVisible and Color3.fromRGB(0, 180, 255) or Color3.fromRGB(120, 60, 255)
+    }):Play()
+end)
+
+-- Minimize (−) ซ่อนเฉพาะ Content
+MinBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    local targetH = isMinimized and 48 or 310
+    TweenService:Create(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad), {
+        Size = UDim2.new(0, 252, 0, targetH)
+    }):Play()
+    Content.Visible = not isMinimized
+    MinBtn.Text = isMinimized and "+" or "−"
+end)
+
+-- Close (✕) ลบ UI ออกจากเกมทันที
+CloseBtn.MouseButton1Click:Connect(function()
+    TweenService:Create(Main, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+        Size = UDim2.new(0, 252, 0, 0),
+        BackgroundTransparency = 1,
+    }):Play()
+    TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+    task.delay(0.22, function()
+        ScreenGui:Destroy()
+    end)
+end)
+
+-- Hover effect บน MinBtn
+MinBtn.MouseEnter:Connect(function()
+    TweenService:Create(MinBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(60, 60, 80)}):Play()
+end)
+MinBtn.MouseLeave:Connect(function()
+    TweenService:Create(MinBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(30, 30, 42)}):Play()
+end)
+CloseBtn.MouseEnter:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(180, 30, 50)}):Play()
+end)
+CloseBtn.MouseLeave:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(60, 20, 28)}):Play()
+end)
