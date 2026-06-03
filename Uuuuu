@@ -1,264 +1,207 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+
 local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer.PlayerGui
 
--- ===== KEY SYSTEM =====
-local CORRECT_KEY = "67"
-local keyVerified = false
+-- ==================== CONFIG ====================
+local CIRCLE_RADIUS = 150
+local MAX_DISTANCE = 500
+local AUTO_FIRE = true
+local FIRE_RATE = 0.1
+local TOOL_NAME = "Gun"
+-- ================================================
 
-local KeyGui = Instance.new("ScreenGui", game.CoreGui)
-KeyGui.Name = "KeyGui"
+-- ==================== GUI ====================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AimbotGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = PlayerGui
 
-local KeyFrame = Instance.new("Frame", KeyGui)
-KeyFrame.Size = UDim2.new(0, 280, 0, 160)
-KeyFrame.Position = UDim2.new(0.5, -140, 0.5, -80)
-KeyFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 12) -- เปลี่ยนเป็นดำเข้ม
-KeyFrame.BackgroundTransparency = 0.1
-KeyFrame.BorderSizePixel = 0
-KeyFrame.Active = true
-KeyFrame.Draggable = true
-Instance.new("UICorner", KeyFrame).CornerRadius = UDim.new(0, 12)
+local Circle = Instance.new("Frame")
+Circle.Size = UDim2.new(0, CIRCLE_RADIUS * 2, 0, CIRCLE_RADIUS * 2)
+Circle.Position = UDim2.new(0.5, -CIRCLE_RADIUS, 0.5, -CIRCLE_RADIUS)
+Circle.BackgroundTransparency = 1
+Circle.BorderSizePixel = 0
+Circle.Active = true
+Circle.Parent = ScreenGui
 
-local KStroke = Instance.new("UIStroke", KeyFrame)
-KStroke.Thickness = 2
-KStroke.Transparency = 0.5
-local KGradient = Instance.new("UIGradient", KStroke)
-KGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 180, 100)), -- สีส้มสว่าง
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 80, 20))    -- สีส้มเข้ม
-})
+Instance.new("UICorner", Circle).CornerRadius = UDim.new(1, 0)
 
-local KeyTitle = Instance.new("TextLabel", KeyFrame)
-KeyTitle.Size = UDim2.new(1, 0, 0, 35)
-KeyTitle.Position = UDim2.new(0, 0, 0, 0)
-KeyTitle.Text = "★ STARFISH HUB — Key System ★"
-KeyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-KeyTitle.Font = Enum.Font.GothamBlack
-KeyTitle.TextSize = 13
-KeyTitle.BackgroundTransparency = 1
-local TitleGrad = Instance.new("UIGradient", KeyTitle)
-TitleGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 180, 100)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 80, 20))
-})
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(255, 50, 50)
+UIStroke.Thickness = 2
+UIStroke.Parent = Circle
 
-local KeyLabel = Instance.new("TextLabel", KeyFrame)
-KeyLabel.Size = UDim2.new(1, -20, 0, 20)
-KeyLabel.Position = UDim2.new(0, 10, 0, 40)
-KeyLabel.Text = "กรุณากรอก Key :"
-KeyLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-KeyLabel.Font = Enum.Font.Gotham
-KeyLabel.TextSize = 12
-KeyLabel.TextXAlignment = Enum.TextXAlignment.Left
-KeyLabel.BackgroundTransparency = 1
+local CenterDot = Instance.new("Frame")
+CenterDot.Size = UDim2.new(0, 6, 0, 6)
+CenterDot.Position = UDim2.new(0.5, -3, 0.5, -3)
+CenterDot.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+CenterDot.BorderSizePixel = 0
+CenterDot.Parent = ScreenGui
+Instance.new("UICorner", CenterDot).CornerRadius = UDim.new(1, 0)
 
-local KeyBox = Instance.new("TextBox", KeyFrame)
-KeyBox.Size = UDim2.new(0, 260, 0, 32)
-KeyBox.Position = UDim2.new(0, 10, 0, 65)
-KeyBox.PlaceholderText = "Enter Key here..."
-KeyBox.Text = ""
-KeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-KeyBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
-KeyBox.Font = Enum.Font.Gotham
-KeyBox.TextSize = 13
-KeyBox.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-KeyBox.BorderSizePixel = 0
-KeyBox.ClearTextOnFocus = false
-Instance.new("UICorner", KeyBox).CornerRadius = UDim.new(0, 8)
+-- ==================== FUNCTIONS ====================
 
-local StatusLabel = Instance.new("TextLabel", KeyFrame)
-StatusLabel.Size = UDim2.new(1, -20, 0, 18)
-StatusLabel.Position = UDim2.new(0, 10, 0, 102)
-StatusLabel.Text = ""
-StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.TextSize = 11
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-StatusLabel.BackgroundTransparency = 1
+local function getHeadPosition(character)
+	local head = character:FindFirstChild("Head")
+	if head then return head.Position end
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if hrp then return hrp.Position end
+	return nil
+end
 
-local SubmitBtn = Instance.new("TextButton", KeyFrame)
-SubmitBtn.Size = UDim2.new(0, 260, 0, 30)
-SubmitBtn.Position = UDim2.new(0, 10, 0, 122)
-SubmitBtn.Text = "Confirm Key"
-SubmitBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
-SubmitBtn.Font = Enum.Font.GothamBold
-SubmitBtn.TextSize = 13
-SubmitBtn.BackgroundColor3 = Color3.fromRGB(255, 110, 50) -- ปุ่มสีส้ม
-SubmitBtn.BorderSizePixel = 0
-SubmitBtn.AutoButtonColor = false
-Instance.new("UICorner", SubmitBtn).CornerRadius = UDim.new(0, 8)
+local function worldToScreen(pos)
+	local screenPos, onScreen = Camera:WorldToScreenPoint(pos)
+	return Vector2.new(screenPos.X, screenPos.Y), onScreen
+end
 
-SubmitBtn.MouseButton1Click:Connect(function()
-    if KeyBox.Text == CORRECT_KEY then
-        keyVerified = true
-        StatusLabel.TextColor3 = Color3.fromRGB(0, 220, 100)
-        StatusLabel.Text = "✔ Key ถูกต้อง! กำลังเปิด Hub..."
-        task.wait(1)
-        KeyGui:Destroy()
-        LoadMainGui() 
-    else
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-        StatusLabel.Text = "✘ Key ไม่ถูกต้อง ลองใหม่อีกครั้ง"
-    end
+local function hasLineOfSight(targetCharacter)
+	local myChar = LocalPlayer.Character
+	local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	if not myHRP then return false end
+
+	local targetHead = targetCharacter:FindFirstChild("Head")
+	if not targetHead then return false end
+
+	local origin = myHRP.Position + Vector3.new(0, 1.5, 0)
+	local target = targetHead.Position
+
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = {myChar, targetCharacter}
+
+	local direction = target - origin
+	local result = workspace:Raycast(origin, direction, rayParams)
+
+	return result == nil
+end
+
+local function findClosestTargetInCircle()
+	local centerScreen = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+	local closestPlayer = nil
+	local closestDist = CIRCLE_RADIUS
+
+	local myChar = LocalPlayer.Character
+	local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	if not myHRP then return nil end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player == LocalPlayer then continue end
+
+		local char = player.Character
+		if not char then continue end
+
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if not hum or hum.Health <= 0 then continue end
+
+		local headPos = getHeadPosition(char)
+		if not headPos then continue end
+
+		local worldDist = (headPos - myHRP.Position).Magnitude
+		if worldDist > MAX_DISTANCE then continue end
+
+		if not hasLineOfSight(char) then continue end
+
+		local screenPos, onScreen = worldToScreen(headPos)
+		if not onScreen then continue end
+
+		local screenDist = (screenPos - centerScreen).Magnitude
+		if screenDist < closestDist then
+			closestDist = screenDist
+			closestPlayer = player
+		end
+	end
+
+	return closestPlayer
+end
+
+local function aimAtTarget(character)
+	local headPos = getHeadPosition(character)
+	if not headPos then return end
+	local camPos = Camera.CFrame.Position
+	Camera.CFrame = CFrame.new(camPos, headPos)
+end
+
+local function fireWeapon()
+	local char = LocalPlayer.Character
+	if not char then return end
+	local tool = char:FindFirstChildOfClass("Tool")
+	if not tool then
+		tool = LocalPlayer.Backpack:FindFirstChild(TOOL_NAME)
+		if tool then
+			local humanoid = char:FindFirstChildOfClass("Humanoid")
+			if humanoid then humanoid:EquipTool(tool) end
+		end
+		return
+	end
+
+	local remote = tool:FindFirstChild("RemoteEvent") or tool:FindFirstChild("Fire")
+	if remote and remote:IsA("RemoteEvent") then
+		remote:FireServer()
+	else
+		local activate = tool:FindFirstChild("Activate")
+		if activate then activate:Fire() end
+	end
+end
+
+-- ==================== TOGGLE (Double Click/Tap) ====================
+local aimbotEnabled = true
+local lockedTarget = nil
+local lastFireTime = 0
+local lastClickTime = 0
+local DOUBLE_CLICK_THRESHOLD = 0.35
+
+local function setEnabled(val)
+	aimbotEnabled = val
+	local color = val and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(100, 100, 100)
+	UIStroke.Color = color
+	CenterDot.BackgroundColor3 = color
+end
+
+Circle.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		local now = tick()
+		if now - lastClickTime <= DOUBLE_CLICK_THRESHOLD then
+			setEnabled(not aimbotEnabled)
+			lastClickTime = 0
+		else
+			lastClickTime = now
+		end
+	end
 end)
 
--- ===== MAIN GUI =====
-function LoadMainGui()
+-- ==================== MAIN LOOP ====================
+RunService.Heartbeat:Connect(function()
+	if not aimbotEnabled then
+		lockedTarget = nil
+		return
+	end
 
-local Locations = {
-    ["Map End"] = CFrame.new(33.3331032, -67.9328308, -2510.57715),
-    ["Arena"]   = CFrame.new(27.5642376, 11.2955561, -509.157745),
-    ["Event"]   = CFrame.new(-248.556366, -65.1312714, -2548.91724),
-    ["Zone 1"]  = CFrame.new(35.5054817, -1.57340455, -124.744881),
-    ["Zone 2"]  = CFrame.new(34.6311569, 19.2955589, -435.780548),
-    ["Zone 3"]  = CFrame.new(34.4227715, -13.2044439, -621.031677),
-    ["Zone 4"]  = CFrame.new(25.9887066, -13.2044439, -832.478394),
-    ["Zone 5"]  = CFrame.new(35.3954544, 8.8687315, -1030.92908),
-    ["Zone 6"]  = CFrame.new(24.4058018, 8.86826992, -1198.17712),
-    ["Zone 7"]  = CFrame.new(29.7921677, -46.1512985, -1411.68274),
-    ["Zone 8"]  = CFrame.new(32.9463043, -120.151299, -1649.51013),
-    ["Zone 9"]  = CFrame.new(29.2538643, -107.151299, -1992.19507),
-    ["Zone 10"] = CFrame.new(30.2563572, -84.9013062, -2257.66724),
-}
-local LocReturn = CFrame.new(31.7642937, -1.57368922, -29.8660946)
+	lockedTarget = findClosestTargetInCircle()
 
-local function Teleport(cf)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = cf
-    end
-end
+	if lockedTarget and lockedTarget.Character then
+		local char = lockedTarget.Character
+		local hum = char:FindFirstChildOfClass("Humanoid")
 
-local function FlySmooth(targetCFrame, duration)
-    local Root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not Root then return end
-    Root.Anchored = true
-    local startPos = Root.CFrame.Position
-    local endPos = targetCFrame.Position
-    local arcHeight = (endPos - startPos).Magnitude / 2.5
-    local controlPoint = ((startPos + endPos) / 2) + Vector3.new(0, arcHeight, 0)
-    local startTime = tick()
-    local connection
-    connection = RunService.RenderStepped:Connect(function()
-        local t = math.min((tick() - startTime) / duration, 1)
-        local p = (1-t)^2 * startPos + 2*(1-t)*t * controlPoint + t^2 * endPos
-        Root.CFrame = CFrame.new(p, p + targetCFrame.LookVector)
-        if t >= 1 then connection:Disconnect(); Root.Anchored = false end
-    end)
-end
+		if hum and hum.Health > 0 then
+			aimAtTarget(char)
+			UIStroke.Color = Color3.fromRGB(255, 50, 50)
 
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 240, 0, 310)
-Main.Position = UDim2.new(0.5, -120, 0.5, -155)
-Main.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
-Main.BackgroundTransparency = 0.1
-Main.BorderSizePixel = 0
-Main.Active = true
-Main.Draggable = true
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
-
-local Stroke = Instance.new("UIStroke", Main)
-Stroke.Thickness = 2
-Stroke.Transparency = 0.6
-local Gradient = Instance.new("UIGradient", Stroke)
-Gradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 180, 100)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 80, 20))
-})
-
-local TitleBar = Instance.new("Frame", Main)
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundTransparency = 1
-
-local Title = Instance.new("TextLabel", TitleBar)
-Title.Size = UDim2.new(1, -35, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "★ STARFISH HUB ★"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBlack
-Title.TextSize = 14
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.BackgroundTransparency = 1
-local TGrad = Instance.new("UIGradient", Title)
-TGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 180, 100)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 80, 20))
-})
-
-local MinBtn = Instance.new("TextButton", TitleBar)
-MinBtn.Size = UDim2.new(0, 26, 0, 22)
-MinBtn.Position = UDim2.new(1, -32, 0, 9)
-MinBtn.Text = "−"
-MinBtn.TextColor3 = Color3.fromRGB(255, 110, 50)
-MinBtn.Font = Enum.Font.GothamBlack
-MinBtn.TextSize = 16
-MinBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-MinBtn.BorderSizePixel = 0
-Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(0, 6)
-
-local Content = Instance.new("Frame", Main)
-Content.Size = UDim2.new(1, 0, 1, -45)
-Content.Position = UDim2.new(0, 0, 0, 40)
-Content.BackgroundTransparency = 1
-
-local function CreateButton(parent, text, size, pos, bgColor, callback)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = size
-    btn.Position = pos
-    btn.BackgroundColor3 = bgColor
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(240, 240, 240)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 11
-    btn.AutoButtonColor = false
-    btn.BorderSizePixel = 0
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-    
-    btn.MouseEnter:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(
-            math.min(bgColor.R * 255 + 20, 255)/255,
-            math.min(bgColor.G * 255 + 20, 255)/255,
-            math.min(bgColor.B * 255 + 20, 255)/255
-        )}):Play()
-    end)
-    btn.MouseLeave:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = bgColor}):Play()
-    end)
-    btn.MouseButton1Click:Connect(callback)
-    return btn
-end
-
-CreateButton(Content, "🚀 Fly Back Slowly", UDim2.new(0, 220, 0, 32), UDim2.new(0, 10, 0, 5), Color3.fromRGB(255, 110, 50), function() FlySmooth(LocReturn, 12) end)
-CreateButton(Content, "Map End", UDim2.new(0, 105, 0, 30), UDim2.new(0, 10, 0, 45), Color3.fromRGB(30, 30, 35), function() Teleport(Locations["Map End"]) end)
-CreateButton(Content, "Arena",   UDim2.new(0, 105, 0, 30), UDim2.new(0, 125, 0, 45), Color3.fromRGB(180, 40, 40), function() Teleport(Locations["Arena"]) end)
-CreateButton(Content, "⭐ Special Event", UDim2.new(0, 220, 0, 30), UDim2.new(0, 10, 0, 80), Color3.fromRGB(255, 140, 0), function() Teleport(Locations["Event"]) end)
-
-local ZoneContainer = Instance.new("ScrollingFrame", Content)
-ZoneContainer.Size = UDim2.new(0, 220, 0, 145)
-ZoneContainer.Position = UDim2.new(0, 10, 0, 115)
-ZoneContainer.BackgroundTransparency = 1
-ZoneContainer.ScrollBarThickness = 0
-ZoneContainer.CanvasSize = UDim2.new(0, 0, 0, 160)
-
-local GridLayout = Instance.new("UIGridLayout", ZoneContainer)
-GridLayout.CellSize = UDim2.new(0, 105, 0, 28)
-GridLayout.CellPadding = UDim2.new(0, 10, 0, 5)
-
-for i = 1, 10 do
-    CreateButton(ZoneContainer, "Zone "..i, UDim2.new(0,0,0,0), UDim2.new(0,0,0,0), Color3.fromRGB(20, 20, 25), function()
-        Teleport(Locations["Zone "..i])
-    end)
-end
-
-local minimized = false
-MinBtn.MouseButton1Click:Connect(function()
-    minimized = not minimized
-    TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-        Size = minimized and UDim2.new(0, 240, 0, 40) or UDim2.new(0, 240, 0, 310)
-    }):Play()
-    Content.Visible = not minimized
-    MinBtn.Text = minimized and "+" or "−"
+			local now = tick()
+			if AUTO_FIRE and now - lastFireTime >= FIRE_RATE then
+				fireWeapon()
+				lastFireTime = now
+			end
+		else
+			lockedTarget = nil
+		end
+	else
+		UIStroke.Color = Color3.fromRGB(255, 200, 0)
+	end
 end)
-
-end 
