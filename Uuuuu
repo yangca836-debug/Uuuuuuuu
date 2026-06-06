@@ -1,3 +1,384 @@
+-- LocalScript ใน StarterPlayerScripts
+local Players       = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService  = game:GetService("TweenService")
+local RunService    = game:GetService("RunService")
+
+local player    = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid  = character:WaitForChild("Humanoid")
+
+local BASE_SPEED = humanoid.WalkSpeed
+local BASE_JUMP  = humanoid.JumpPower
+local ADD_MIN, ADD_MAX = 0, 50
+
+local SELF_COLOR   = Color3.fromRGB(100, 200, 255)
+local FRIEND_COLOR = Color3.fromRGB(200, 0, 255)
+local ENEMY_COLOR = Color3.fromRGB(255, 0, 0)
+
+-- ===== Highlight =====
+local friendCache = {}
+
+local function isFriend(target)
+	if friendCache[target.UserId] ~= nil then return friendCache[target.UserId] end
+	local ok, result = pcall(function() return player:IsFriendsWith(target.UserId) end)
+	friendCache[target.UserId] = ok and result or false
+	return friendCache[target.UserId]
+end
+
+local function applyHighlight(target)
+    local char = target.Character
+    if not char then return end
+
+    task.spawn(function()
+        char:WaitForChild("HumanoidRootPart", 10)
+        char:WaitForChild("Humanoid", 10)
+
+        local h = char:FindFirstChild("Highlight")
+
+   if not h then
+    h = Instance.new("Highlight")
+    h.Adornee = char
+    h.Parent = char
+end
+
+h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+h.FillTransparency = 0.25
+h.OutlineTransparency = 0
+
+        if target == player then
+            h.FillColor = SELF_COLOR
+            h.OutlineColor = SELF_COLOR
+        elseif isFriend(target) then
+            h.FillColor = FRIEND_COLOR
+            h.OutlineColor = FRIEND_COLOR
+        else
+            h.FillColor = ENEMY_COLOR
+            h.OutlineColor = ENEMY_COLOR
+        end
+    end)
+end
+
+local function setupPlayer(p)
+	if p.Character then applyHighlight(p) end
+	p.CharacterAdded:Connect(function(char)
+		char:WaitForChild("HumanoidRootPart", 10)
+		applyHighlight(p)
+	end)
+end
+
+for _, p in Players:GetPlayers() do setupPlayer(p) end
+Players.PlayerAdded:Connect(setupPlayer)
+
+player.CharacterAdded:Connect(function(char)
+	character  = char
+	humanoid   = char:WaitForChild("Humanoid")
+	BASE_SPEED = humanoid.WalkSpeed
+	BASE_JUMP  = humanoid.JumpPower
+end)
+
+-- ===== GUI =====
+local sg = Instance.new("ScreenGui")
+sg.Name              = "StatUI"
+sg.ResetOnSpawn      = false
+sg.ZIndexBehavior    = Enum.ZIndexBehavior.Sibling
+sg.IgnoreGuiInset    = true
+sg.Parent            = player.PlayerGui
+
+-- Main container
+local main = Instance.new("Frame")
+main.Name                   = "Main"
+main.Size                   = UDim2.new(0, 180, 0, 136)
+main.Position               = UDim2.new(0, 20, 0.5, -68)
+main.BackgroundColor3       = Color3.fromRGB(10, 10, 12)
+main.BackgroundTransparency = 0.08
+main.BorderSizePixel        = 0
+main.ClipsDescendants       = true
+main.Parent                 = sg
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 14)
+
+-- Outer border
+local outerStroke = Instance.new("UIStroke", main)
+outerStroke.Color        = Color3.fromRGB(255, 255, 255)
+outerStroke.Thickness    = 1
+outerStroke.Transparency = 0.86
+
+-- Top shimmer line
+local shimmer = Instance.new("Frame", main)
+shimmer.Name                   = "Shimmer"
+shimmer.Size                   = UDim2.new(0.55, 0, 0, 1)
+shimmer.Position               = UDim2.new(0.225, 0, 0, 0)
+shimmer.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+shimmer.BackgroundTransparency = 0.55
+shimmer.BorderSizePixel        = 0
+shimmer.ZIndex                 = 10
+Instance.new("UICorner", shimmer).CornerRadius = UDim.new(1, 0)
+
+-- Header
+local hdr = Instance.new("Frame", main)
+hdr.Name                   = "Header"
+hdr.Size                   = UDim2.new(1, 0, 0, 34)
+hdr.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+hdr.BackgroundTransparency = 0.96
+hdr.BorderSizePixel        = 0
+hdr.ZIndex                 = 2
+Instance.new("UICorner", hdr).CornerRadius = UDim.new(0, 14)
+
+-- macOS dots
+local dotColors = {
+	Color3.fromRGB(255, 95, 87),
+	Color3.fromRGB(255, 189, 46),
+	Color3.fromRGB(39, 201, 63),
+}
+for i, col in ipairs(dotColors) do
+	local dot = Instance.new("Frame", hdr)
+	dot.Size             = UDim2.new(0, 6, 0, 6)
+	dot.Position         = UDim2.new(0, 8 + (i-1)*12, 0.5, -3)
+	dot.BackgroundColor3 = col
+	dot.BorderSizePixel  = 0
+	dot.ZIndex           = 3
+	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+end
+
+-- Title
+local titleLbl = Instance.new("TextLabel", hdr)
+titleLbl.Size                   = UDim2.new(1, -80, 1, 0)
+titleLbl.Position               = UDim2.new(0, 48, 0, 0)
+titleLbl.BackgroundTransparency = 1
+titleLbl.Text                   = "PLAYER STATS"
+titleLbl.TextColor3             = Color3.fromRGB(220, 220, 225)
+titleLbl.TextSize               = 9
+titleLbl.Font                   = Enum.Font.GothamBold
+titleLbl.TextXAlignment         = Enum.TextXAlignment.Left
+titleLbl.TextTransparency       = 0.15
+titleLbl.ZIndex                 = 3
+
+-- Toggle button
+local toggleBtn = Instance.new("TextButton", hdr)
+toggleBtn.Size                   = UDim2.new(0, 22, 0, 22)
+toggleBtn.Position               = UDim2.new(1, -28, 0.5, -11)
+toggleBtn.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+toggleBtn.BackgroundTransparency = 0.88
+toggleBtn.BorderSizePixel        = 0
+toggleBtn.Text                   = "−"
+toggleBtn.TextColor3             = Color3.fromRGB(200, 200, 205)
+toggleBtn.TextSize               = 14
+toggleBtn.Font                   = Enum.Font.GothamBold
+toggleBtn.AutoButtonColor        = false
+toggleBtn.ZIndex                 = 3
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 6)
+
+-- Divider
+local divider = Instance.new("Frame", main)
+divider.Size                   = UDim2.new(1, -28, 0, 1)
+divider.Position               = UDim2.new(0, 14, 0, 34)
+divider.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+divider.BackgroundTransparency = 0.9
+divider.BorderSizePixel        = 0
+divider.ZIndex                 = 2
+
+-- Content
+local content = Instance.new("Frame", main)
+content.Name                   = "Content"
+content.Size                   = UDim2.new(1, 0, 0, 102)
+content.Position               = UDim2.new(0, 0, 0, 35)
+content.BackgroundTransparency = 1
+content.ZIndex                 = 2
+
+-- ===== Slider factory =====
+local function makeSlider(yPos, labelText, iconText, minV, maxV, onChange)
+	local row = Instance.new("Frame", content)
+	row.Size                   = UDim2.new(1, -24, 0, 44)
+	row.Position               = UDim2.new(0, 12, 0, yPos)
+	row.BackgroundTransparency = 1
+	row.ZIndex                 = 2
+
+	-- Icon pill
+	local pill = Instance.new("Frame", row)
+	pill.Size                   = UDim2.new(0, 28, 0, 18)
+	pill.Position               = UDim2.new(0, 0, 0, 2)
+	pill.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+	pill.BackgroundTransparency = 0.92
+	pill.BorderSizePixel        = 0
+	pill.ZIndex                 = 3
+	Instance.new("UICorner", pill).CornerRadius = UDim.new(0, 5)
+
+	local iconL = Instance.new("TextLabel", pill)
+	iconL.Size                   = UDim2.new(1, 0, 1, 0)
+	iconL.BackgroundTransparency = 1
+	iconL.Text                   = iconText
+	iconL.TextColor3             = Color3.fromRGB(170, 170, 180)
+	iconL.TextSize               = 9
+	iconL.Font                   = Enum.Font.GothamBold
+	iconL.ZIndex                 = 4
+
+	-- Label
+	local namL = Instance.new("TextLabel", row)
+	namL.Size                   = UDim2.new(0.58, 0, 0, 16)
+	namL.Position               = UDim2.new(0, 34, 0, 2)
+	namL.BackgroundTransparency = 1
+	namL.Text                   = labelText
+	namL.TextColor3             = Color3.fromRGB(155, 155, 165)
+	namL.TextSize               = 9
+	namL.Font                   = Enum.Font.Gotham
+	namL.TextXAlignment         = Enum.TextXAlignment.Left
+	namL.ZIndex                 = 3
+
+	-- Value
+	local valL = Instance.new("TextLabel", row)
+	valL.Size                   = UDim2.new(0.42, -34, 0, 16)
+	valL.Position               = UDim2.new(0.58, 0, 0, 2)
+	valL.BackgroundTransparency = 1
+	valL.Text                   = "+0"
+	valL.TextColor3             = Color3.fromRGB(225, 225, 230)
+	valL.TextSize               = 9
+	valL.Font                   = Enum.Font.GothamBold
+	valL.TextXAlignment         = Enum.TextXAlignment.Right
+	valL.ZIndex                 = 3
+
+	-- Track bg
+	local track = Instance.new("Frame", row)
+	track.Size                   = UDim2.new(1, 0, 0, 4)
+	track.Position               = UDim2.new(0, 0, 0, 26)
+	track.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+	track.BackgroundTransparency = 0.9
+	track.BorderSizePixel        = 0
+	track.ZIndex                 = 3
+	Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+
+	-- Fill
+	local fill = Instance.new("Frame", track)
+	fill.Size              = UDim2.new(0, 0, 1, 0)
+	fill.BackgroundColor3  = Color3.fromRGB(200, 200, 210)
+	fill.BorderSizePixel   = 0
+	fill.ZIndex            = 4
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+	-- Thumb
+	local thumb = Instance.new("Frame", track)
+	thumb.Size             = UDim2.new(0, 12, 0, 12)
+	thumb.AnchorPoint      = Vector2.new(0.5, 0.5)
+	thumb.Position         = UDim2.new(0, 0, 0.5, 0)
+	thumb.BackgroundColor3 = Color3.fromRGB(240, 240, 245)
+	thumb.BorderSizePixel  = 0
+	thumb.ZIndex           = 5
+	Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
+
+	-- Thumb inner dot
+	local dot = Instance.new("Frame", thumb)
+	dot.Size             = UDim2.new(0, 4, 0, 4)
+	dot.AnchorPoint      = Vector2.new(0.5, 0.5)
+	dot.Position         = UDim2.new(0.5, 0, 0.5, 0)
+	dot.BackgroundColor3 = Color3.fromRGB(120, 120, 130)
+	dot.BorderSizePixel  = 0
+	dot.ZIndex           = 6
+	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+
+	-- Drag logic (smooth)
+	local dragging   = false
+	local targetPct  = 0
+	local currentPct = 0
+
+	local function update(pos)
+		local ax = track.AbsolutePosition.X
+		local aw = track.AbsoluteSize.X
+		targetPct = math.clamp((pos.X - ax) / aw, 0, 1)
+		local v = math.round(minV + targetPct * (maxV - minV))
+		valL.Text = "+"..tostring(v)
+		onChange(v)
+	end
+
+	-- Smooth lerp on heartbeat
+	RunService.Heartbeat:Connect(function(dt)
+		if math.abs(currentPct - targetPct) > 0.001 then
+			currentPct = currentPct + (targetPct - currentPct) * math.min(dt * 20, 1)
+			fill.Size      = UDim2.new(currentPct, 0, 1, 0)
+			thumb.Position = UDim2.new(currentPct, 0, 0.5, 0)
+		end
+	end)
+
+	track.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1
+		or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = true; update(i.Position)
+		end
+	end)
+	thumb.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1
+		or i.UserInputType == Enum.UserInputType.Touch then dragging = true end
+	end)
+	UserInputService.InputChanged:Connect(function(i)
+		if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement
+		or i.UserInputType == Enum.UserInputType.Touch) then update(i.Position) end
+	end)
+	UserInputService.InputEnded:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1
+		or i.UserInputType == Enum.UserInputType.Touch then dragging = false end
+	end)
+end
+
+makeSlider(4,  "SPEED  base "..BASE_SPEED, "SPD", ADD_MIN, ADD_MAX, function(v)
+	if humanoid then humanoid.WalkSpeed = BASE_SPEED + v end
+end)
+makeSlider(52, "JUMP   base "..BASE_JUMP,  "JMP", ADD_MIN, ADD_MAX, function(v)
+	if humanoid then humanoid.JumpPower = BASE_JUMP + v end
+end)
+
+-- ===== Collapse (smooth tween) =====
+local collapsed    = false
+local FULL_HEIGHT  = 136
+local MINI_HEIGHT  = 34
+
+toggleBtn.MouseButton1Click:Connect(function()
+	collapsed = not collapsed
+	toggleBtn.Text = collapsed and "+" or "−"
+
+	TweenService:Create(main,
+		TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, 180, 0, collapsed and MINI_HEIGHT or FULL_HEIGHT)
+	}):Play()
+
+	if collapsed then
+		TweenService:Create(content,
+			TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			GroupTransparency = 1
+		}):Play()
+	else
+		content.Visible = true
+		TweenService:Create(content,
+			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			GroupTransparency = 0
+		}):Play()
+	end
+end)
+
+-- ===== Drag =====
+local isDragging, dragStart, startPos = false, nil, nil
+
+hdr.InputBegan:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1
+	or i.UserInputType == Enum.UserInputType.Touch then
+		isDragging = true
+		dragStart  = i.Position
+		startPos   = main.Position
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(i)
+	if isDragging and (i.UserInputType == Enum.UserInputType.MouseMovement
+	or i.UserInputType == Enum.UserInputType.Touch) then
+		local d = i.Position - dragStart
+		main.Position = UDim2.new(
+			startPos.X.Scale, startPos.X.Offset + d.X,
+			startPos.Y.Scale, startPos.Y.Offset + d.Y
+		)
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1
+	or i.UserInputType == Enum.UserInputType.Touch then isDragging = false end
+end)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -216,295 +597,4 @@ RunService.Heartbeat:Connect(function()
 	else
 		UIStroke.Color = Color3.fromRGB(255, 200, 0)
 	end
-end)
--- LocalScript ใน StarterPlayerScripts
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-
-local player    = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid  = character:WaitForChild("Humanoid")
-
-local BASE_SPEED = humanoid.WalkSpeed
-local BASE_JUMP  = humanoid.JumpPower
-local ADD_MIN, ADD_MAX = 0, 50
-
-local SELF_COLOR   = Color3.fromRGB(80, 180, 255)
-local FRIEND_COLOR = Color3.fromRGB(180, 80, 255)
-local ENEMY_COLOR  = Color3.fromRGB(255, 50, 50)
-
--- ===== Highlight =====
-local function applyHighlight(target)
-	local char = target.Character
-	if not char then return end
-	task.spawn(function()
-		char:WaitForChild("HumanoidRootPart", 10)
-		local h = char:FindFirstChild("Highlight")
-	if not h then
-    h = Instance.new("Highlight")
-    h.Adornee = char
-    h.Parent = char
-end
-
-h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-h.FillTransparency = 0.8
-h.OutlineTransparency = 0
-		if target == player then
-			h.FillColor    = SELF_COLOR
-			h.OutlineColor = SELF_COLOR
-		else
-			local ok, isFriend = pcall(function()
-				return player:IsFriendsWith(target.UserId)
-			end)
-			if ok and isFriend then
-				h.FillColor    = FRIEND_COLOR
-				h.OutlineColor = FRIEND_COLOR
-			else
-				h.FillColor    = ENEMY_COLOR
-				h.OutlineColor = ENEMY_COLOR
-			end
-		end
-	end)
-end
-
-for _, p in Players:GetPlayers() do
-	applyHighlight(p)
-	p.CharacterAdded:Connect(function()
-		task.wait(0.1)
-		applyHighlight(p)
-	end)
-end
-
-Players.PlayerAdded:Connect(function(p)
-	applyHighlight(p)
-	p.CharacterAdded:Connect(function()
-		task.wait(0.1)
-		applyHighlight(p)
-	end)
-end)
-
-player.CharacterAdded:Connect(function(char)
-	character  = char
-	humanoid   = char:WaitForChild("Humanoid")
-	BASE_SPEED = humanoid.WalkSpeed
-	BASE_JUMP  = humanoid.JumpPower
-end)
-
--- ===== GUI =====
-local sg = Instance.new("ScreenGui")
-sg.Name           = "StatUI"
-sg.ResetOnSpawn   = false
-sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-sg.Parent         = player.PlayerGui
-
-local main = Instance.new("Frame")
-main.Size                   = UDim2.new(0, 162, 0, 128)
-main.Position               = UDim2.new(0, 16, 0.5, -64)
-main.BackgroundColor3       = Color3.fromRGB(14, 14, 14)
-main.BackgroundTransparency = 0.15
-main.BorderSizePixel        = 0
-main.ClipsDescendants       = true
-main.Parent                 = sg
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
-
-local stroke = Instance.new("UIStroke", main)
-stroke.Color        = Color3.fromRGB(255, 255, 255)
-stroke.Thickness    = 1.2
-stroke.Transparency = 0.82
-
-local accent = Instance.new("Frame", main)
-accent.Size                   = UDim2.new(0.5, 0, 0, 1)
-accent.Position               = UDim2.new(0.25, 0, 0, 0)
-accent.BackgroundColor3       = Color3.fromRGB(200, 200, 200)
-accent.BackgroundTransparency = 0.4
-accent.BorderSizePixel        = 0
-Instance.new("UICorner", accent).CornerRadius = UDim.new(1, 0)
-
-local hdr = Instance.new("Frame", main)
-hdr.Size                   = UDim2.new(1, 0, 0, 30)
-hdr.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
-hdr.BackgroundTransparency = 0.94
-hdr.BorderSizePixel        = 0
-Instance.new("UICorner", hdr).CornerRadius = UDim.new(0, 12)
-
-for i, cx in ipairs({10, 18, 26}) do
-	local dot = Instance.new("Frame", hdr)
-	dot.Size             = UDim2.new(0, 5, 0, 5)
-	dot.Position         = UDim2.new(0, cx, 0.5, -2)
-	dot.BackgroundColor3 = i == 1 and Color3.fromRGB(255, 90, 90)
-		or i == 2 and Color3.fromRGB(255, 200, 60)
-		or Color3.fromRGB(80, 200, 80)
-	dot.BorderSizePixel  = 0
-	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-end
-
-local lbl = Instance.new("TextLabel", hdr)
-lbl.Size                   = UDim2.new(1, -60, 1, 0)
-lbl.Position               = UDim2.new(0, 40, 0, 0)
-lbl.BackgroundTransparency = 1
-lbl.Text                   = "PLAYER STATS"
-lbl.TextColor3             = Color3.fromRGB(210, 210, 210)
-lbl.TextSize               = 9
-lbl.Font                   = Enum.Font.GothamBold
-lbl.TextXAlignment         = Enum.TextXAlignment.Left
-
-local toggleBtn = Instance.new("TextButton", hdr)
-toggleBtn.Size                   = UDim2.new(0, 20, 0, 20)
-toggleBtn.Position               = UDim2.new(1, -25, 0.5, -10)
-toggleBtn.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
-toggleBtn.BackgroundTransparency = 0.85
-toggleBtn.BorderSizePixel        = 0
-toggleBtn.Text                   = "-"
-toggleBtn.TextColor3             = Color3.fromRGB(200, 200, 200)
-toggleBtn.TextSize               = 13
-toggleBtn.Font                   = Enum.Font.GothamBold
-toggleBtn.AutoButtonColor        = false
-Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 5)
-
-local content = Instance.new("Frame", main)
-content.Size                   = UDim2.new(1, 0, 0, 98)
-content.Position               = UDim2.new(0, 0, 0, 30)
-content.BackgroundTransparency = 1
-
-local div = Instance.new("Frame", content)
-div.Size                   = UDim2.new(1, -24, 0, 0.5)
-div.Position               = UDim2.new(0, 12, 0, 0)
-div.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
-div.BackgroundTransparency = 0.88
-div.BorderSizePixel        = 0
-
-local function makeSlider(yPos, label, icon, minV, maxV, defV, onChange)
-	local c = Instance.new("Frame", content)
-	c.Size                   = UDim2.new(1, -20, 0, 42)
-	c.Position               = UDim2.new(0, 10, 0, yPos)
-	c.BackgroundTransparency = 1
-
-	local iconBox = Instance.new("Frame", c)
-	iconBox.Size                   = UDim2.new(0, 20, 0, 20)
-	iconBox.Position               = UDim2.new(0, 0, 0, 0)
-	iconBox.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
-	iconBox.BackgroundTransparency = 0.9
-	iconBox.BorderSizePixel        = 0
-	Instance.new("UICorner", iconBox).CornerRadius = UDim.new(0, 5)
-
-	local iconLbl = Instance.new("TextLabel", iconBox)
-	iconLbl.Size                   = UDim2.new(1, 0, 1, 0)
-	iconLbl.BackgroundTransparency = 1
-	iconLbl.Text                   = icon
-	iconLbl.TextColor3             = Color3.fromRGB(180, 180, 180)
-	iconLbl.TextSize               = 10
-	iconLbl.Font                   = Enum.Font.GothamBold
-
-	local nameLbl = Instance.new("TextLabel", c)
-	nameLbl.Size                   = UDim2.new(0.6, 0, 0, 14)
-	nameLbl.Position               = UDim2.new(0, 26, 0, 3)
-	nameLbl.BackgroundTransparency = 1
-	nameLbl.Text                   = label
-	nameLbl.TextColor3             = Color3.fromRGB(160, 160, 160)
-	nameLbl.TextSize               = 9
-	nameLbl.Font                   = Enum.Font.Gotham
-	nameLbl.TextXAlignment         = Enum.TextXAlignment.Left
-
-	local valLbl = Instance.new("TextLabel", c)
-	valLbl.Size                   = UDim2.new(0.4, -26, 0, 14)
-	valLbl.Position               = UDim2.new(0.6, 0, 0, 3)
-	valLbl.BackgroundTransparency = 1
-	valLbl.Text                   = "+0"
-	valLbl.TextColor3             = Color3.fromRGB(220, 220, 220)
-	valLbl.TextSize               = 9
-	valLbl.Font                   = Enum.Font.GothamBold
-	valLbl.TextXAlignment         = Enum.TextXAlignment.Right
-
-	local track = Instance.new("Frame", c)
-	track.Size                   = UDim2.new(1, 0, 0, 4)
-	track.Position               = UDim2.new(0, 0, 0, 24)
-	track.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
-	track.BackgroundTransparency = 0.88
-	track.BorderSizePixel        = 0
-	Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
-
-	local fill = Instance.new("Frame", track)
-	fill.Size              = UDim2.new(0, 0, 1, 0)
-	fill.BackgroundColor3  = Color3.fromRGB(180, 180, 180)
-	fill.BorderSizePixel   = 0
-	Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
-
-	local thumb = Instance.new("Frame", track)
-	thumb.Size             = UDim2.new(0, 10, 0, 10)
-	thumb.AnchorPoint      = Vector2.new(0.5, 0.5)
-	thumb.Position         = UDim2.new(0, 0, 0.5, 0)
-	thumb.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-	thumb.BorderSizePixel  = 0
-	thumb.ZIndex           = 3
-	Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
-
-	local dragging = false
-	local function update(pos)
-		local t = math.clamp((pos.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
-		local v = math.round(minV + t * (maxV - minV))
-		local p = (v - minV) / (maxV - minV)
-		fill.Size      = UDim2.new(p, 0, 1, 0)
-		thumb.Position = UDim2.new(p, 0, 0.5, 0)
-		valLbl.Text    = "+"..tostring(v)
-		onChange(v)
-	end
-
-	track.InputBegan:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1
-		or i.UserInputType == Enum.UserInputType.Touch then
-			dragging = true; update(i.Position)
-		end
-	end)
-	thumb.InputBegan:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1
-		or i.UserInputType == Enum.UserInputType.Touch then dragging = true end
-	end)
-	UserInputService.InputChanged:Connect(function(i)
-		if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement
-		or i.UserInputType == Enum.UserInputType.Touch) then update(i.Position) end
-	end)
-	UserInputService.InputEnded:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1
-		or i.UserInputType == Enum.UserInputType.Touch then dragging = false end
-	end)
-end
-
-makeSlider(6,  "SPEED (base "..BASE_SPEED..")", "SPD", ADD_MIN, ADD_MAX, 0, function(v)
-	if humanoid then humanoid.WalkSpeed = BASE_SPEED + v end
-end)
-makeSlider(52, "JUMP  (base "..BASE_JUMP..")",  "JMP", ADD_MIN, ADD_MAX, 0, function(v)
-	if humanoid then humanoid.JumpPower = BASE_JUMP + v end
-end)
-
-local collapsed = false
-toggleBtn.MouseButton1Click:Connect(function()
-	collapsed = not collapsed
-	content.Visible = not collapsed
-	toggleBtn.Text  = collapsed and "+" or "-"
-	TweenService:Create(main, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {
-		Size = collapsed and UDim2.new(0, 162, 0, 30) or UDim2.new(0, 162, 0, 128)
-	}):Play()
-end)
-
-local isDragging, dragStart, startPos = false, nil, nil
-hdr.InputBegan:Connect(function(i)
-	if i.UserInputType == Enum.UserInputType.MouseButton1
-	or i.UserInputType == Enum.UserInputType.Touch then
-		isDragging = true
-		dragStart  = i.Position
-		startPos   = main.Position
-	end
-end)
-UserInputService.InputChanged:Connect(function(i)
-	if isDragging and (i.UserInputType == Enum.UserInputType.MouseMovement
-	or i.UserInputType == Enum.UserInputType.Touch) then
-		local d = i.Position - dragStart
-		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X,
-		                          startPos.Y.Scale, startPos.Y.Offset + d.Y)
-	end
-end)
-UserInputService.InputEnded:Connect(function(i)
-	if i.UserInputType == Enum.UserInputType.MouseButton1
-	or i.UserInputType == Enum.UserInputType.Touch then isDragging = false end
 end)
