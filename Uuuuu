@@ -1,4 +1,3 @@
--- LocalScript ใน StarterPlayerScripts
 local Players       = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService  = game:GetService("TweenService")
@@ -393,8 +392,7 @@ local MAX_DISTANCE = 500
 local AUTO_FIRE = true
 local FIRE_RATE = 0.1
 local TOOL_NAME = "Gun"
--- ================================================
-
+local NO_FRIEND_AIM = true -- ไม่เล็งเพื่อน
 -- ==================== GUI ====================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AimbotGui"
@@ -472,9 +470,14 @@ local function findClosestTargetInCircle()
 	if not myHRP then return nil end
 
 	for _, player in ipairs(Players:GetPlayers()) do
-		if player == LocalPlayer then continue end
+    if player == LocalPlayer then continue end
 
-		local char = player.Character
+    -- ข้ามเพื่อน
+    if NO_FRIEND_AIM and isFriend(player) then
+        continue
+    end
+
+    local char = player.Character
 		if not char then continue end
 
 		local hum = char:FindFirstChildOfClass("Humanoid")
@@ -598,3 +601,23 @@ RunService.Heartbeat:Connect(function()
 		UIStroke.Color = Color3.fromRGB(255, 200, 0)
 	end
 end)
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function isFriend(player)
+    if player == LocalPlayer then
+        return false
+    end
+
+    local success, result = pcall(function()
+        return LocalPlayer:IsFriendsWith(player.UserId)
+    end)
+
+    return success and result
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+    if isFriend(plr) then
+        print(plr.Name .. " เป็นเพื่อน")
+    end
+end
