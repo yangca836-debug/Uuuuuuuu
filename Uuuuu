@@ -1,7 +1,8 @@
-local Players       = game:GetService("Players")
+local Players          = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local TweenService  = game:GetService("TweenService")
-local RunService    = game:GetService("RunService")
+local TweenService     = game:GetService("TweenService")
+local RunService       = game:GetService("RunService")
+local Camera           = workspace.CurrentCamera
 
 local player    = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
@@ -13,11 +14,20 @@ local ADD_MIN, ADD_MAX = 0, 50
 
 local SELF_COLOR   = Color3.fromRGB(100, 200, 255)
 local FRIEND_COLOR = Color3.fromRGB(200, 0, 255)
-local ENEMY_COLOR = Color3.fromRGB(255, 0, 0)
+local ENEMY_COLOR  = Color3.fromRGB(255, 0, 0)
 
--- ===== Highlight =====
+local CIRCLE_RADIUS = 150
+local MAX_DISTANCE  = 500
+local AUTO_FIRE     = true
+local FIRE_RATE     = 0.1
+local TOOL_NAME     = "Gun"
+local NO_FRIEND_AIM = false
+local highlightOn   = true
+local aimbotEnabled = true
+local scriptActive  = true
+
+-- ===== Friend Cache =====
 local friendCache = {}
-
 local function isFriend(target)
 	if friendCache[target.UserId] ~= nil then return friendCache[target.UserId] end
 	local ok, result = pcall(function() return player:IsFriendsWith(target.UserId) end)
@@ -25,45 +35,45 @@ local function isFriend(target)
 	return friendCache[target.UserId]
 end
 
+-- ===== Highlight =====
+local highlightInstances = {}
+
 local function applyHighlight(target)
-    local char = target.Character
-    if not char then return end
-
-    task.spawn(function()
-        char:WaitForChild("HumanoidRootPart", 10)
-        char:WaitForChild("Humanoid", 10)
-
-        local h = char:FindFirstChild("Highlight")
-
-   if not h then
-    h = Instance.new("Highlight")
-    h.Adornee = char
-    h.Parent = char
+	local char = target.Character
+	if not char then return end
+	task.spawn(function()
+		char:WaitForChild("HumanoidRootPart", 10)
+		char:WaitForChild("Humanoid", 10)
+		local h = char:FindFirstChild("Highlight")
+		if not h then
+			h = Instance.new("Highlight")
+			h.Adornee = char
+			h.Parent  = char
+		end
+		highlightInstances[target.UserId] = h
+		h.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
+		h.FillTransparency    = 0.25
+		h.OutlineTransparency = 0
+		h.Enabled = highlightOn
+		if target == player then
+			h.FillColor = SELF_COLOR; h.OutlineColor = SELF_COLOR
+		elseif isFriend(target) then
+			h.FillColor = FRIEND_COLOR; h.OutlineColor = FRIEND_COLOR
+		else
+			h.FillColor = ENEMY_COLOR; h.OutlineColor = ENEMY_COLOR
+		end
+	end)
 end
 
-h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-h.FillTransparency = 0.25
-h.OutlineTransparency = 0
-
-        if target == player then
-            h.FillColor = SELF_COLOR
-            h.OutlineColor = SELF_COLOR
-        elseif isFriend(target) then
-            h.FillColor = FRIEND_COLOR
-            h.OutlineColor = FRIEND_COLOR
-        else
-            h.FillColor = ENEMY_COLOR
-            h.OutlineColor = ENEMY_COLOR
-        end
-    end)
+local function setHighlightAll(val)
+	for _, h in pairs(highlightInstances) do
+		if h and h.Parent then h.Enabled = val end
+	end
 end
 
 local function setupPlayer(p)
 	if p.Character then applyHighlight(p) end
-	p.CharacterAdded:Connect(function(char)
-		char:WaitForChild("HumanoidRootPart", 10)
-		applyHighlight(p)
-	end)
+	p.CharacterAdded:Connect(function() task.wait(0.1); applyHighlight(p) end)
 end
 
 for _, p in Players:GetPlayers() do setupPlayer(p) end
@@ -76,19 +86,21 @@ player.CharacterAdded:Connect(function(char)
 	BASE_JUMP  = humanoid.JumpPower
 end)
 
--- ===== GUI =====
+-- ==================== GUI ====================
 local sg = Instance.new("ScreenGui")
-sg.Name              = "StatUI"
-sg.ResetOnSpawn      = false
-sg.ZIndexBehavior    = Enum.ZIndexBehavior.Sibling
-sg.IgnoreGuiInset    = true
-sg.Parent            = player.PlayerGui
+sg.Name           = "StatUI"
+sg.ResetOnSpawn   = false
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+sg.IgnoreGuiInset = true
+sg.Parent         = player.PlayerGui
 
--- Main container
+local FULL_HEIGHT = 185
+local MINI_HEIGHT = 34
+
 local main = Instance.new("Frame")
 main.Name                   = "Main"
-main.Size                   = UDim2.new(0, 180, 0, 136)
-main.Position               = UDim2.new(0, 20, 0.5, -68)
+main.Size                   = UDim2.new(0, 190, 0, FULL_HEIGHT)
+main.Position               = UDim2.new(0, 20, 0.5, -92)
 main.BackgroundColor3       = Color3.fromRGB(10, 10, 12)
 main.BackgroundTransparency = 0.08
 main.BorderSizePixel        = 0
@@ -96,187 +108,236 @@ main.ClipsDescendants       = true
 main.Parent                 = sg
 Instance.new("UICorner", main).CornerRadius = UDim.new(0, 14)
 
--- Outer border
 local outerStroke = Instance.new("UIStroke", main)
-outerStroke.Color        = Color3.fromRGB(255, 255, 255)
-outerStroke.Thickness    = 1
+outerStroke.Color = Color3.fromRGB(255,255,255)
+outerStroke.Thickness = 1
 outerStroke.Transparency = 0.86
 
--- Top shimmer line
 local shimmer = Instance.new("Frame", main)
-shimmer.Name                   = "Shimmer"
-shimmer.Size                   = UDim2.new(0.55, 0, 0, 1)
-shimmer.Position               = UDim2.new(0.225, 0, 0, 0)
-shimmer.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+shimmer.Size = UDim2.new(0.55,0,0,1)
+shimmer.Position = UDim2.new(0.225,0,0,0)
+shimmer.BackgroundColor3 = Color3.fromRGB(255,255,255)
 shimmer.BackgroundTransparency = 0.55
-shimmer.BorderSizePixel        = 0
-shimmer.ZIndex                 = 10
-Instance.new("UICorner", shimmer).CornerRadius = UDim.new(1, 0)
+shimmer.BorderSizePixel = 0
+shimmer.ZIndex = 10
+Instance.new("UICorner", shimmer).CornerRadius = UDim.new(1,0)
 
 -- Header
 local hdr = Instance.new("Frame", main)
-hdr.Name                   = "Header"
-hdr.Size                   = UDim2.new(1, 0, 0, 34)
-hdr.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+hdr.Name = "Header"
+hdr.Size = UDim2.new(1,0,0,34)
+hdr.BackgroundColor3 = Color3.fromRGB(255,255,255)
 hdr.BackgroundTransparency = 0.96
-hdr.BorderSizePixel        = 0
-hdr.ZIndex                 = 2
-Instance.new("UICorner", hdr).CornerRadius = UDim.new(0, 14)
+hdr.BorderSizePixel = 0
+hdr.ZIndex = 2
+Instance.new("UICorner", hdr).CornerRadius = UDim.new(0,14)
 
--- macOS dots
-local dotColors = {
-	Color3.fromRGB(255, 95, 87),
-	Color3.fromRGB(255, 189, 46),
-	Color3.fromRGB(39, 201, 63),
-}
-for i, col in ipairs(dotColors) do
+for i, col in ipairs({
+	Color3.fromRGB(255,95,87),
+	Color3.fromRGB(255,189,46),
+	Color3.fromRGB(39,201,63),
+}) do
 	local dot = Instance.new("Frame", hdr)
-	dot.Size             = UDim2.new(0, 6, 0, 6)
-	dot.Position         = UDim2.new(0, 8 + (i-1)*12, 0.5, -3)
+	dot.Size = UDim2.new(0,6,0,6)
+	dot.Position = UDim2.new(0, 8+(i-1)*12, 0.5, -3)
 	dot.BackgroundColor3 = col
-	dot.BorderSizePixel  = 0
-	dot.ZIndex           = 3
-	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+	dot.BorderSizePixel = 0
+	dot.ZIndex = 3
+	Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
 end
 
--- Title
 local titleLbl = Instance.new("TextLabel", hdr)
-titleLbl.Size                   = UDim2.new(1, -80, 1, 0)
-titleLbl.Position               = UDim2.new(0, 48, 0, 0)
+titleLbl.Size = UDim2.new(1,-90,1,0)
+titleLbl.Position = UDim2.new(0,48,0,0)
 titleLbl.BackgroundTransparency = 1
-titleLbl.Text                   = "PLAYER STATS"
-titleLbl.TextColor3             = Color3.fromRGB(220, 220, 225)
-titleLbl.TextSize               = 9
-titleLbl.Font                   = Enum.Font.GothamBold
-titleLbl.TextXAlignment         = Enum.TextXAlignment.Left
-titleLbl.TextTransparency       = 0.15
-titleLbl.ZIndex                 = 3
+titleLbl.Text = "PLAYER STATS"
+titleLbl.TextColor3 = Color3.fromRGB(220,220,225)
+titleLbl.TextSize = 9
+titleLbl.Font = Enum.Font.GothamBold
+titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+titleLbl.TextTransparency = 0
+titleLbl.ZIndex = 3
 
--- Toggle button
+-- ปุ่ม − พับ
 local toggleBtn = Instance.new("TextButton", hdr)
-toggleBtn.Size                   = UDim2.new(0, 22, 0, 22)
-toggleBtn.Position               = UDim2.new(1, -28, 0.5, -11)
-toggleBtn.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+toggleBtn.Size = UDim2.new(0,22,0,22)
+toggleBtn.Position = UDim2.new(1,-52,0.5,-11)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(255,255,255)
 toggleBtn.BackgroundTransparency = 0.88
-toggleBtn.BorderSizePixel        = 0
-toggleBtn.Text                   = "−"
-toggleBtn.TextColor3             = Color3.fromRGB(200, 200, 205)
-toggleBtn.TextSize               = 14
-toggleBtn.Font                   = Enum.Font.GothamBold
-toggleBtn.AutoButtonColor        = false
-toggleBtn.ZIndex                 = 3
-Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 6)
+toggleBtn.BorderSizePixel = 0
+toggleBtn.Text = "−"
+toggleBtn.TextColor3 = Color3.fromRGB(200,200,205)
+toggleBtn.TextSize = 14
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.AutoButtonColor = false
+toggleBtn.ZIndex = 3
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,6)
 
--- Divider
+-- ปุ่ม × ลบ
+local closeBtn = Instance.new("TextButton", hdr)
+closeBtn.Size = UDim2.new(0,22,0,22)
+closeBtn.Position = UDim2.new(1,-26,0.5,-11)
+closeBtn.BackgroundColor3 = Color3.fromRGB(255,80,80)
+closeBtn.BackgroundTransparency = 0.6
+closeBtn.BorderSizePixel = 0
+closeBtn.Text = "×"
+closeBtn.TextColor3 = Color3.fromRGB(255,200,200)
+closeBtn.TextSize = 14
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.AutoButtonColor = false
+closeBtn.ZIndex = 3
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0,6)
+
 local divider = Instance.new("Frame", main)
-divider.Size                   = UDim2.new(1, -28, 0, 1)
-divider.Position               = UDim2.new(0, 14, 0, 34)
-divider.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+divider.Size = UDim2.new(1,-28,0,1)
+divider.Position = UDim2.new(0,14,0,34)
+divider.BackgroundColor3 = Color3.fromRGB(255,255,255)
 divider.BackgroundTransparency = 0.9
-divider.BorderSizePixel        = 0
-divider.ZIndex                 = 2
+divider.BorderSizePixel = 0
+divider.ZIndex = 2
 
--- Content
-local content = Instance.new("Frame", main)
-content.Name                   = "Content"
-content.Size                   = UDim2.new(1, 0, 0, 102)
-content.Position               = UDim2.new(0, 0, 0, 35)
-content.BackgroundTransparency = 1
-content.ZIndex                 = 2
+-- ===== Tab Bar =====
+local tabBar = Instance.new("Frame", main)
+tabBar.Size = UDim2.new(1,-24,0,24)
+tabBar.Position = UDim2.new(0,12,0,40)
+tabBar.BackgroundTransparency = 1
+tabBar.ZIndex = 3
+
+local function makeTab(text, xPos)
+	local btn = Instance.new("TextButton", tabBar)
+	btn.Size = UDim2.new(0.5,-3,1,0)
+	btn.Position = UDim2.new(xPos,0,0,0)
+	btn.BackgroundColor3 = Color3.fromRGB(30,30,35)
+	btn.BorderSizePixel = 0
+	btn.Text = text
+	btn.TextColor3 = Color3.fromRGB(140,140,150)
+	btn.TextSize = 8
+	btn.Font = Enum.Font.GothamBold
+	btn.ZIndex = 4
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+	return btn
+end
+
+local tabStats = makeTab("STATS", 0)
+local tabAim   = makeTab("AIM", 0.5)
+
+-- Content pages
+local pageStats = Instance.new("Frame", main)
+pageStats.Size = UDim2.new(1,0,0,FULL_HEIGHT-70)
+pageStats.Position = UDim2.new(0,0,0,70)
+pageStats.BackgroundTransparency = 1
+pageStats.ZIndex = 2
+
+local pageAim = Instance.new("Frame", main)
+pageAim.Size = UDim2.new(1,0,0,FULL_HEIGHT-70)
+pageAim.Position = UDim2.new(0,0,0,70)
+pageAim.BackgroundTransparency = 1
+pageAim.Visible = false
+pageAim.ZIndex = 2
+
+local function setTab(isStats)
+	pageStats.Visible = isStats
+	pageAim.Visible   = not isStats
+	if isStats then
+		tabStats.BackgroundColor3 = Color3.fromRGB(55,55,62)
+		tabStats.TextColor3       = Color3.fromRGB(220,220,225)
+		tabAim.BackgroundColor3   = Color3.fromRGB(30,30,35)
+		tabAim.TextColor3         = Color3.fromRGB(140,140,150)
+	else
+		tabAim.BackgroundColor3   = Color3.fromRGB(55,55,62)
+		tabAim.TextColor3         = Color3.fromRGB(220,220,225)
+		tabStats.BackgroundColor3 = Color3.fromRGB(30,30,35)
+		tabStats.TextColor3       = Color3.fromRGB(140,140,150)
+	end
+end
+setTab(true)
+
+tabStats.MouseButton1Click:Connect(function() setTab(true) end)
+tabAim.MouseButton1Click:Connect(function() setTab(false) end)
 
 -- ===== Slider factory =====
-local function makeSlider(yPos, labelText, iconText, minV, maxV, onChange)
-	local row = Instance.new("Frame", content)
-	row.Size                   = UDim2.new(1, -24, 0, 44)
-	row.Position               = UDim2.new(0, 12, 0, yPos)
+local function makeSlider(parent, yPos, labelText, iconText, minV, maxV, onChange)
+	local row = Instance.new("Frame", parent)
+	row.Size = UDim2.new(1,-24,0,44)
+	row.Position = UDim2.new(0,12,0,yPos)
 	row.BackgroundTransparency = 1
-	row.ZIndex                 = 2
+	row.ZIndex = 2
 
-	-- Icon pill
 	local pill = Instance.new("Frame", row)
-	pill.Size                   = UDim2.new(0, 28, 0, 18)
-	pill.Position               = UDim2.new(0, 0, 0, 2)
-	pill.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+	pill.Size = UDim2.new(0,28,0,18)
+	pill.Position = UDim2.new(0,0,0,2)
+	pill.BackgroundColor3 = Color3.fromRGB(255,255,255)
 	pill.BackgroundTransparency = 0.92
-	pill.BorderSizePixel        = 0
-	pill.ZIndex                 = 3
-	Instance.new("UICorner", pill).CornerRadius = UDim.new(0, 5)
+	pill.BorderSizePixel = 0
+	pill.ZIndex = 3
+	Instance.new("UICorner", pill).CornerRadius = UDim.new(0,5)
 
 	local iconL = Instance.new("TextLabel", pill)
-	iconL.Size                   = UDim2.new(1, 0, 1, 0)
+	iconL.Size = UDim2.new(1,0,1,0)
 	iconL.BackgroundTransparency = 1
-	iconL.Text                   = iconText
-	iconL.TextColor3             = Color3.fromRGB(170, 170, 180)
-	iconL.TextSize               = 9
-	iconL.Font                   = Enum.Font.GothamBold
-	iconL.ZIndex                 = 4
+	iconL.Text = iconText
+	iconL.TextColor3 = Color3.fromRGB(170,170,180)
+	iconL.TextSize = 9
+	iconL.Font = Enum.Font.GothamBold
+	iconL.ZIndex = 4
 
-	-- Label
 	local namL = Instance.new("TextLabel", row)
-	namL.Size                   = UDim2.new(0.58, 0, 0, 16)
-	namL.Position               = UDim2.new(0, 34, 0, 2)
+	namL.Size = UDim2.new(0.58,0,0,16)
+	namL.Position = UDim2.new(0,34,0,2)
 	namL.BackgroundTransparency = 1
-	namL.Text                   = labelText
-	namL.TextColor3             = Color3.fromRGB(155, 155, 165)
-	namL.TextSize               = 9
-	namL.Font                   = Enum.Font.Gotham
-	namL.TextXAlignment         = Enum.TextXAlignment.Left
-	namL.ZIndex                 = 3
+	namL.Text = labelText
+	namL.TextColor3 = Color3.fromRGB(155,155,165)
+	namL.TextSize = 9
+	namL.Font = Enum.Font.Gotham
+	namL.TextXAlignment = Enum.TextXAlignment.Left
+	namL.ZIndex = 3
 
-	-- Value
 	local valL = Instance.new("TextLabel", row)
-	valL.Size                   = UDim2.new(0.42, -34, 0, 16)
-	valL.Position               = UDim2.new(0.58, 0, 0, 2)
+	valL.Size = UDim2.new(0.42,-34,0,16)
+	valL.Position = UDim2.new(0.58,0,0,2)
 	valL.BackgroundTransparency = 1
-	valL.Text                   = "+0"
-	valL.TextColor3             = Color3.fromRGB(225, 225, 230)
-	valL.TextSize               = 9
-	valL.Font                   = Enum.Font.GothamBold
-	valL.TextXAlignment         = Enum.TextXAlignment.Right
-	valL.ZIndex                 = 3
+	valL.Text = "+0"
+	valL.TextColor3 = Color3.fromRGB(225,225,230)
+	valL.TextSize = 9
+	valL.Font = Enum.Font.GothamBold
+	valL.TextXAlignment = Enum.TextXAlignment.Right
+	valL.ZIndex = 3
 
-	-- Track bg
 	local track = Instance.new("Frame", row)
-	track.Size                   = UDim2.new(1, 0, 0, 4)
-	track.Position               = UDim2.new(0, 0, 0, 26)
-	track.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+	track.Size = UDim2.new(1,0,0,4)
+	track.Position = UDim2.new(0,0,0,26)
+	track.BackgroundColor3 = Color3.fromRGB(255,255,255)
 	track.BackgroundTransparency = 0.9
-	track.BorderSizePixel        = 0
-	track.ZIndex                 = 3
-	Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+	track.BorderSizePixel = 0
+	track.ZIndex = 3
+	Instance.new("UICorner", track).CornerRadius = UDim.new(1,0)
 
-	-- Fill
 	local fill = Instance.new("Frame", track)
-	fill.Size              = UDim2.new(0, 0, 1, 0)
-	fill.BackgroundColor3  = Color3.fromRGB(200, 200, 210)
-	fill.BorderSizePixel   = 0
-	fill.ZIndex            = 4
-	Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+	fill.Size = UDim2.new(0,0,1,0)
+	fill.BackgroundColor3 = Color3.fromRGB(200,200,210)
+	fill.BorderSizePixel = 0
+	fill.ZIndex = 4
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(1,0)
 
-	-- Thumb
 	local thumb = Instance.new("Frame", track)
-	thumb.Size             = UDim2.new(0, 12, 0, 12)
-	thumb.AnchorPoint      = Vector2.new(0.5, 0.5)
-	thumb.Position         = UDim2.new(0, 0, 0.5, 0)
-	thumb.BackgroundColor3 = Color3.fromRGB(240, 240, 245)
-	thumb.BorderSizePixel  = 0
-	thumb.ZIndex           = 5
-	Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
+	thumb.Size = UDim2.new(0,12,0,12)
+	thumb.AnchorPoint = Vector2.new(0.5,0.5)
+	thumb.Position = UDim2.new(0,0,0.5,0)
+	thumb.BackgroundColor3 = Color3.fromRGB(240,240,245)
+	thumb.BorderSizePixel = 0
+	thumb.ZIndex = 5
+	Instance.new("UICorner", thumb).CornerRadius = UDim.new(1,0)
 
-	-- Thumb inner dot
 	local dot = Instance.new("Frame", thumb)
-	dot.Size             = UDim2.new(0, 4, 0, 4)
-	dot.AnchorPoint      = Vector2.new(0.5, 0.5)
-	dot.Position         = UDim2.new(0.5, 0, 0.5, 0)
-	dot.BackgroundColor3 = Color3.fromRGB(120, 120, 130)
-	dot.BorderSizePixel  = 0
-	dot.ZIndex           = 6
-	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+	dot.Size = UDim2.new(0,4,0,4)
+	dot.AnchorPoint = Vector2.new(0.5,0.5)
+	dot.Position = UDim2.new(0.5,0,0.5,0)
+	dot.BackgroundColor3 = Color3.fromRGB(120,120,130)
+	dot.BorderSizePixel = 0
+	dot.ZIndex = 6
+	Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
 
-	-- Drag logic (smooth)
-	local dragging   = false
-	local targetPct  = 0
-	local currentPct = 0
+	local dragging, targetPct, currentPct = false, 0, 0
 
 	local function update(pos)
 		local ax = track.AbsolutePosition.X
@@ -287,12 +348,11 @@ local function makeSlider(yPos, labelText, iconText, minV, maxV, onChange)
 		onChange(v)
 	end
 
-	-- Smooth lerp on heartbeat
 	RunService.Heartbeat:Connect(function(dt)
 		if math.abs(currentPct - targetPct) > 0.001 then
-			currentPct = currentPct + (targetPct - currentPct) * math.min(dt * 20, 1)
-			fill.Size      = UDim2.new(currentPct, 0, 1, 0)
-			thumb.Position = UDim2.new(currentPct, 0, 0.5, 0)
+			currentPct = currentPct + (targetPct - currentPct) * math.min(dt*20,1)
+			fill.Size = UDim2.new(currentPct,0,1,0)
+			thumb.Position = UDim2.new(currentPct,0,0.5,0)
 		end
 	end)
 
@@ -316,252 +376,293 @@ local function makeSlider(yPos, labelText, iconText, minV, maxV, onChange)
 	end)
 end
 
-makeSlider(4,  "SPEED  base "..BASE_SPEED, "SPD", ADD_MIN, ADD_MAX, function(v)
+makeSlider(pageStats, 4,  "SPEED  base "..BASE_SPEED, "SPD", ADD_MIN, ADD_MAX, function(v)
 	if humanoid then humanoid.WalkSpeed = BASE_SPEED + v end
 end)
-makeSlider(52, "JUMP   base "..BASE_JUMP,  "JMP", ADD_MIN, ADD_MAX, function(v)
+makeSlider(pageStats, 52, "JUMP   base "..BASE_JUMP,  "JMP", ADD_MIN, ADD_MAX, function(v)
 	if humanoid then humanoid.JumpPower = BASE_JUMP + v end
 end)
 
--- ===== Collapse (smooth tween) =====
-local collapsed    = false
-local FULL_HEIGHT  = 136
-local MINI_HEIGHT  = 34
+-- ===== ปุ่มสร้างใน AIM page =====
+local function makeToggleBtn(parent, yPos, labelOn, labelOff, initVal, onChange)
+	local btn = Instance.new("TextButton", parent)
+	btn.Size = UDim2.new(1,-24,0,22)
+	btn.Position = UDim2.new(0,12,0,yPos)
+	btn.BorderSizePixel = 0
+	btn.TextSize = 8
+	btn.Font = Enum.Font.GothamBold
+	btn.ZIndex = 3
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0,5)
+	local st = Instance.new("UIStroke", btn)
+	st.Color = Color3.fromRGB(180,180,180)
+	st.Thickness = 1
+	st.Transparency = 0.3
 
+	local val = initVal
+	local function refresh()
+		if val then
+			btn.Text = labelOn
+			btn.BackgroundColor3 = Color3.fromRGB(55,55,60)
+			btn.TextColor3 = Color3.fromRGB(220,220,220)
+		else
+			btn.Text = labelOff
+			btn.BackgroundColor3 = Color3.fromRGB(25,25,28)
+			btn.TextColor3 = Color3.fromRGB(140,140,140)
+		end
+	end
+	refresh()
+	btn.MouseButton1Click:Connect(function()
+		val = not val
+		onChange(val)
+		refresh()
+	end)
+	return btn
+end
+
+-- HIGHLIGHT toggle
+makeToggleBtn(pageAim, 4, "HIGHLIGHT : ON", "HIGHLIGHT : OFF", true, function(v)
+	highlightOn = v
+	setHighlightAll(v)
+end)
+
+-- SAFE toggle
+makeToggleBtn(pageAim, 32, "SAFE : ON", "SAFE : OFF", false, function(v)
+	NO_FRIEND_AIM = v
+end)
+
+-- FOV +/−
+local fovLabel = Instance.new("TextLabel", pageAim)
+fovLabel.Size = UDim2.new(1,-24,0,14)
+fovLabel.Position = UDim2.new(0,12,0,62)
+fovLabel.BackgroundTransparency = 1
+fovLabel.Text = "FOV : "..CIRCLE_RADIUS
+fovLabel.TextColor3 = Color3.fromRGB(155,155,165)
+fovLabel.TextSize = 8
+fovLabel.Font = Enum.Font.GothamBold
+fovLabel.TextXAlignment = Enum.TextXAlignment.Left
+fovLabel.ZIndex = 3
+
+local Circle, UIStroke, CenterDot  -- declare ก่อน ใช้ใน updateFOV
+
+local function updateFOV()
+	fovLabel.Text = "FOV : "..CIRCLE_RADIUS
+	if Circle then
+		Circle.Size     = UDim2.new(0, CIRCLE_RADIUS*2, 0, CIRCLE_RADIUS*2)
+		Circle.Position = UDim2.new(0.5, -CIRCLE_RADIUS, 0.5, -CIRCLE_RADIUS)
+	end
+end
+
+local fovMinus = Instance.new("TextButton", pageAim)
+fovMinus.Size = UDim2.new(0,36,0,20)
+fovMinus.Position = UDim2.new(0,12,0,80)
+fovMinus.BackgroundColor3 = Color3.fromRGB(35,35,38)
+fovMinus.BorderSizePixel = 0
+fovMinus.Text = "−"
+fovMinus.TextColor3 = Color3.fromRGB(200,200,205)
+fovMinus.TextSize = 14
+fovMinus.Font = Enum.Font.GothamBold
+fovMinus.ZIndex = 3
+Instance.new("UICorner", fovMinus).CornerRadius = UDim.new(0,5)
+local sm = Instance.new("UIStroke",fovMinus)
+sm.Color=Color3.fromRGB(180,180,180);sm.Thickness=1;sm.Transparency=0.3
+
+local fovPlus = Instance.new("TextButton", pageAim)
+fovPlus.Size = UDim2.new(0,36,0,20)
+fovPlus.Position = UDim2.new(0,54,0,80)
+fovPlus.BackgroundColor3 = Color3.fromRGB(35,35,38)
+fovPlus.BorderSizePixel = 0
+fovPlus.Text = "+"
+fovPlus.TextColor3 = Color3.fromRGB(200,200,205)
+fovPlus.TextSize = 14
+fovPlus.Font = Enum.Font.GothamBold
+fovPlus.ZIndex = 3
+Instance.new("UICorner", fovPlus).CornerRadius = UDim.new(0,5)
+local sp = Instance.new("UIStroke",fovPlus)
+sp.Color=Color3.fromRGB(180,180,180);sp.Thickness=1;sp.Transparency=0.3
+
+fovMinus.MouseButton1Click:Connect(function()
+	CIRCLE_RADIUS = math.max(50, CIRCLE_RADIUS - 10)
+	updateFOV()
+end)
+fovPlus.MouseButton1Click:Connect(function()
+	CIRCLE_RADIUS = math.min(400, CIRCLE_RADIUS + 10)
+	updateFOV()
+end)
+
+-- ===== Collapse =====
+local collapsed = false
 toggleBtn.MouseButton1Click:Connect(function()
 	collapsed = not collapsed
 	toggleBtn.Text = collapsed and "+" or "−"
-
-	TweenService:Create(main,
-		TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-		Size = UDim2.new(0, 180, 0, collapsed and MINI_HEIGHT or FULL_HEIGHT)
+	TweenService:Create(main, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, 190, 0, collapsed and MINI_HEIGHT or FULL_HEIGHT)
 	}):Play()
+end)
 
-	if collapsed then
-		TweenService:Create(content,
-			TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			GroupTransparency = 1
-		}):Play()
-	else
-		content.Visible = true
-		TweenService:Create(content,
-			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			GroupTransparency = 0
-		}):Play()
-	end
+-- ===== Close =====
+closeBtn.MouseButton1Click:Connect(function()
+	scriptActive = false
+	sg:Destroy()
+	if _G.AimbotGui then _G.AimbotGui:Destroy() end
 end)
 
 -- ===== Drag =====
 local isDragging, dragStart, startPos = false, nil, nil
-
 hdr.InputBegan:Connect(function(i)
 	if i.UserInputType == Enum.UserInputType.MouseButton1
 	or i.UserInputType == Enum.UserInputType.Touch then
-		isDragging = true
-		dragStart  = i.Position
-		startPos   = main.Position
+		isDragging = true; dragStart = i.Position; startPos = main.Position
 	end
 end)
-
 UserInputService.InputChanged:Connect(function(i)
 	if isDragging and (i.UserInputType == Enum.UserInputType.MouseMovement
 	or i.UserInputType == Enum.UserInputType.Touch) then
 		local d = i.Position - dragStart
-		main.Position = UDim2.new(
-			startPos.X.Scale, startPos.X.Offset + d.X,
-			startPos.Y.Scale, startPos.Y.Offset + d.Y
-		)
+		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+d.X,
+			startPos.Y.Scale, startPos.Y.Offset+d.Y)
 	end
 end)
-
 UserInputService.InputEnded:Connect(function(i)
 	if i.UserInputType == Enum.UserInputType.MouseButton1
 	or i.UserInputType == Enum.UserInputType.Touch then isDragging = false end
 end)
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
 
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer.PlayerGui
-
--- ==================== CONFIG ====================
-local CIRCLE_RADIUS = 150
-local MAX_DISTANCE = 500
-local AUTO_FIRE = true
-local FIRE_RATE = 0.1
-local TOOL_NAME = "Gun"
-local NO_FRIEND_AIM = true -- ไม่เล็งเพื่อน
--- ==================== GUI ====================
+-- ==================== AIMBOT GUI ====================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AimbotGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = PlayerGui
+ScreenGui.Parent = player.PlayerGui
+_G.AimbotGui = ScreenGui
 
-local Circle = Instance.new("Frame")
-Circle.Size = UDim2.new(0, CIRCLE_RADIUS * 2, 0, CIRCLE_RADIUS * 2)
+Circle = Instance.new("Frame")
+Circle.Size = UDim2.new(0, CIRCLE_RADIUS*2, 0, CIRCLE_RADIUS*2)
 Circle.Position = UDim2.new(0.5, -CIRCLE_RADIUS, 0.5, -CIRCLE_RADIUS)
 Circle.BackgroundTransparency = 1
 Circle.BorderSizePixel = 0
 Circle.Active = false
 Circle.Parent = ScreenGui
+Instance.new("UICorner", Circle).CornerRadius = UDim.new(1,0)
 
-Instance.new("UICorner", Circle).CornerRadius = UDim.new(1, 0)
-
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(255, 50, 50)
+UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(255,50,50)
 UIStroke.Thickness = 2
 UIStroke.Parent = Circle
 
-local CenterDot = Instance.new("Frame")
-CenterDot.Size = UDim2.new(0, 6, 0, 6)
-CenterDot.Position = UDim2.new(0.5, -3, 0.5, -3)
-CenterDot.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+CenterDot = Instance.new("Frame")
+CenterDot.Size = UDim2.new(0,6,0,6)
+CenterDot.Position = UDim2.new(0.5,-3,0.5,-3)
+CenterDot.BackgroundColor3 = Color3.fromRGB(255,50,50)
 CenterDot.BorderSizePixel = 0
 CenterDot.Active = false
 CenterDot.Parent = ScreenGui
-Instance.new("UICorner", CenterDot).CornerRadius = UDim.new(1, 0)
+Instance.new("UICorner", CenterDot).CornerRadius = UDim.new(1,0)
 
--- ==================== FUNCTIONS ====================
-
-local function getHeadPosition(character)
-	local head = character:FindFirstChild("Head")
+-- ==================== AIMBOT FUNCTIONS ====================
+local function getHeadPosition(char)
+	local head = char:FindFirstChild("Head")
 	if head then return head.Position end
-	local hrp = character:FindFirstChild("HumanoidRootPart")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if hrp then return hrp.Position end
 	return nil
 end
 
 local function worldToScreen(pos)
-	local screenPos, onScreen = Camera:WorldToScreenPoint(pos)
-	return Vector2.new(screenPos.X, screenPos.Y), onScreen
+	local sp, on = Camera:WorldToScreenPoint(pos)
+	return Vector2.new(sp.X, sp.Y), on
 end
 
-local function hasLineOfSight(targetCharacter)
-	local myChar = LocalPlayer.Character
-	local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+local function hasLineOfSight(targetChar)
+	local myChar = player.Character
+	local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
 	if not myHRP then return false end
-
-	local targetHead = targetCharacter:FindFirstChild("Head")
+	local targetHead = targetChar:FindFirstChild("Head")
 	if not targetHead then return false end
-
-	local origin = myHRP.Position + Vector3.new(0, 1.5, 0)
-	local target = targetHead.Position
-
-	local rayParams = RaycastParams.new()
-	rayParams.FilterType = Enum.RaycastFilterType.Exclude
-	rayParams.FilterDescendantsInstances = {myChar, targetCharacter}
-
-	local direction = target - origin
-	local result = workspace:Raycast(origin, direction, rayParams)
-
-	return result == nil
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Exclude
+	rp.FilterDescendantsInstances = {myChar, targetChar}
+	return workspace:Raycast(myHRP.Position + Vector3.new(0,1.5,0),
+		targetHead.Position - (myHRP.Position + Vector3.new(0,1.5,0)), rp) == nil
 end
 
 local function findClosestTargetInCircle()
-	local centerScreen = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-	local closestPlayer = nil
-	local closestDist = CIRCLE_RADIUS
-
-	local myChar = LocalPlayer.Character
-	local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+	local closest, dist = nil, CIRCLE_RADIUS
+	local myChar = player.Character
+	local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
 	if not myHRP then return nil end
-
-	for _, player in ipairs(Players:GetPlayers()) do
-    if player == LocalPlayer then continue end
-
-    -- ข้ามเพื่อน
-    if NO_FRIEND_AIM and isFriend(player) then
-        continue
-    end
-
-    local char = player.Character
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p == player then continue end
+		if NO_FRIEND_AIM and isFriend(p) then continue end
+		local char = p.Character
 		if not char then continue end
-
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if not hum or hum.Health <= 0 then continue end
-
-		local headPos = getHeadPosition(char)
-		if not headPos then continue end
-
-		local worldDist = (headPos - myHRP.Position).Magnitude
-		if worldDist > MAX_DISTANCE then continue end
-
+		local hp = getHeadPosition(char)
+		if not hp then continue end
+		if (hp - myHRP.Position).Magnitude > MAX_DISTANCE then continue end
 		if not hasLineOfSight(char) then continue end
-
-		local screenPos, onScreen = worldToScreen(headPos)
-		if not onScreen then continue end
-
-		local screenDist = (screenPos - centerScreen).Magnitude
-		if screenDist < closestDist then
-			closestDist = screenDist
-			closestPlayer = player
-		end
+		local sp, on = worldToScreen(hp)
+		if not on then continue end
+		local d = (sp - center).Magnitude
+		if d < dist then dist = d; closest = p end
 	end
-
-	return closestPlayer
+	return closest
 end
 
-local function aimAtTarget(character)
-	local headPos = getHeadPosition(character)
-	if not headPos then return end
-	local camPos = Camera.CFrame.Position
-	Camera.CFrame = CFrame.new(camPos, headPos)
+local function aimAtTarget(char)
+	local hp = getHeadPosition(char)
+	if not hp then return end
+	Camera.CFrame = CFrame.new(Camera.CFrame.Position, hp)
 end
 
 local function fireWeapon()
-	local char = LocalPlayer.Character
+	local char = player.Character
 	if not char then return end
 	local tool = char:FindFirstChildOfClass("Tool")
 	if not tool then
-		tool = LocalPlayer.Backpack:FindFirstChild(TOOL_NAME)
+		tool = player.Backpack:FindFirstChild(TOOL_NAME)
 		if tool then
-			local humanoid = char:FindFirstChildOfClass("Humanoid")
-			if humanoid then humanoid:EquipTool(tool) end
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if hum then hum:EquipTool(tool) end
 		end
 		return
 	end
-
 	local remote = tool:FindFirstChild("RemoteEvent") or tool:FindFirstChild("Fire")
 	if remote and remote:IsA("RemoteEvent") then
 		remote:FireServer()
 	else
-		local activate = tool:FindFirstChild("Activate")
-		if activate then activate:Fire() end
+		local act = tool:FindFirstChild("Activate")
+		if act then act:Fire() end
 	end
 end
 
--- ==================== TOGGLE ====================
-local aimbotEnabled = true
-local lockedTarget = nil
-local lastFireTime = 0
+-- ==================== TOGGLE double-click วงกลม ====================
+local lockedTarget  = nil
+local lastFireTime  = 0
 local lastClickTime = 0
 local DOUBLE_CLICK_THRESHOLD = 0.35
 
 local function setEnabled(val)
 	aimbotEnabled = val
-	local color = val and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(100, 100, 100)
+	local color = val and Color3.fromRGB(255,50,50) or Color3.fromRGB(100,100,100)
 	UIStroke.Color = color
 	CenterDot.BackgroundColor3 = color
 end
 
 local function isInsideCircle(pos)
-	local center = Vector2.new(
+	local c = Vector2.new(
 		Circle.AbsolutePosition.X + CIRCLE_RADIUS,
-		Circle.AbsolutePosition.Y + CIRCLE_RADIUS
-	)
-	return (pos - center).Magnitude <= CIRCLE_RADIUS
+		Circle.AbsolutePosition.Y + CIRCLE_RADIUS)
+	return (pos - c).Magnitude <= CIRCLE_RADIUS
 end
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+UserInputService.InputBegan:Connect(function(input)
+	if not scriptActive then return end
 	if input.UserInputType == Enum.UserInputType.MouseButton1
-		or input.UserInputType == Enum.UserInputType.Touch then
-
+	or input.UserInputType == Enum.UserInputType.Touch then
 		local pos = Vector2.new(input.Position.X, input.Position.Y)
 		if not isInsideCircle(pos) then return end
-
 		local now = tick()
 		if now - lastClickTime <= DOUBLE_CLICK_THRESHOLD then
 			setEnabled(not aimbotEnabled)
@@ -574,50 +675,25 @@ end)
 
 -- ==================== MAIN LOOP ====================
 RunService.Heartbeat:Connect(function()
-	if not aimbotEnabled then
-		lockedTarget = nil
-		return
-	end
-
+	if not scriptActive then return end
+	if not aimbotEnabled then lockedTarget = nil; return end
 	lockedTarget = findClosestTargetInCircle()
-
 	if lockedTarget and lockedTarget.Character then
 		local char = lockedTarget.Character
-		local hum = char:FindFirstChildOfClass("Humanoid")
-
+		local hum  = char:FindFirstChildOfClass("Humanoid")
 		if hum and hum.Health > 0 then
 			aimAtTarget(char)
-			UIStroke.Color = Color3.fromRGB(255, 50, 50)
-
+			UIStroke.Color = Color3.fromRGB(255,50,50)
 			local now = tick()
 			if AUTO_FIRE and now - lastFireTime >= FIRE_RATE then
-				fireWeapon()
-				lastFireTime = now
+				fireWeapon(); lastFireTime = now
 			end
 		else
 			lockedTarget = nil
 		end
 	else
-		UIStroke.Color = Color3.fromRGB(255, 200, 0)
+		UIStroke.Color = Color3.fromRGB(255,200,0)
 	end
 end)
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
-local function isFriend(player)
-    if player == LocalPlayer then
-        return false
-    end
-
-    local success, result = pcall(function()
-        return LocalPlayer:IsFriendsWith(player.UserId)
-    end)
-
-    return success and result
-end
-
-for _, plr in ipairs(Players:GetPlayers()) do
-    if isFriend(plr) then
-        print(plr.Name .. " เป็นเพื่อน")
-    end
-end
+setEnabled(true)
