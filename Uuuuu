@@ -2,31 +2,89 @@ local Players          = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService     = game:GetService("TweenService")
 local RunService       = game:GetService("RunService")
+local HttpService      = game:GetService("HttpService")
 local Camera           = workspace.CurrentCamera
 
 local player    = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid  = character:WaitForChild("Humanoid")
 
+-- ===== CONFIG & SAVE SYSTEM =====
+local CONFIG_FILE = "StatUIAimbotConfig.json"
+
+local config = {
+    ADD_MIN        = 0,
+    ADD_MAX        = 50,
+    speedAdd       = 0,
+    jumpAdd        = 0,
+    CIRCLE_RADIUS  = 150,
+    MAX_DISTANCE   = 500,
+    AUTO_FIRE      = true,
+    FIRE_RATE      = 0.1,
+    TOOL_NAME      = "Gun",
+    NO_FRIEND_AIM  = false,
+    highlightOn    = true,
+    aimbotEnabled  = true
+}
+
+local function saveConfig()
+    local success, encoded = pcall(function()
+        return HttpService:JSONEncode(config)
+    end)
+    if success and writefile then
+        pcall(function()
+            writefile(CONFIG_FILE, encoded)
+        end)
+    end
+end
+
+local function loadConfig()
+    if readfile and isfile and isfile(CONFIG_FILE) then
+        local success, decoded = pcall(function()
+            return HttpService:JSONDecode(readfile(CONFIG_FILE))
+        end)
+        if success and type(decoded) == "table" then
+            for k, v in pairs(decoded) do
+                config[k] = v
+            end
+        end
+    end
+end
+
+loadConfig()
+
 local BASE_SPEED = humanoid.WalkSpeed
 local BASE_JUMP  = humanoid.JumpPower
-local ADD_MIN, ADD_MAX = 0, 50
+local ADD_MIN, ADD_MAX = config.ADD_MIN, config.ADD_MAX
 
 local SELF_COLOR   = Color3.fromRGB(100, 200, 255)
 local FRIEND_COLOR = Color3.fromRGB(200, 0, 255)
 local ENEMY_COLOR  = Color3.fromRGB(255, 0, 0)
 
-local CIRCLE_RADIUS = 150
-local MAX_DISTANCE  = 500
-local AUTO_FIRE     = true
-local FIRE_RATE     = 0.1
-local TOOL_NAME     = "Gun"
-local NO_FRIEND_AIM = false
-local highlightOn   = true
-local aimbotEnabled = true
+local CIRCLE_RADIUS = config.CIRCLE_RADIUS
+local MAX_DISTANCE  = config.MAX_DISTANCE
+local AUTO_FIRE     = config.AUTO_FIRE
+local FIRE_RATE     = config.FIRE_RATE
+local TOOL_NAME     = config.TOOL_NAME
+local NO_FRIEND_AIM = config.NO_FRIEND_AIM
+local highlightOn   = config.highlightOn
+local aimbotEnabled = config.aimbotEnabled
 local scriptActive  = true
 
--- ===== Friend Cache =====
+local queueTeleport = queue_on_teleport or syn and syn.queue_on_teleport
+if queueTeleport then
+    player.OnTeleport:Connect(function(teleportState)
+        if teleportState == Enum.TeleportState.Started then
+            pcall(function()
+                queueTeleport([[
+                    task.wait(2)
+                    loadstring(game:HttpGet("YOUR_SCRIPT_URL_HERE"))()
+                ]])
+            end)
+        end
+    end)
+end
+
 local friendCache = {}
 local function isFriend(target)
 	if friendCache[target.UserId] ~= nil then return friendCache[target.UserId] end
@@ -35,7 +93,6 @@ local function isFriend(target)
 	return friendCache[target.UserId]
 end
 
--- ===== Highlight =====
 local highlightInstances = {}
 
 local function applyHighlight(target)
@@ -84,9 +141,18 @@ player.CharacterAdded:Connect(function(char)
 	humanoid   = char:WaitForChild("Humanoid")
 	BASE_SPEED = humanoid.WalkSpeed
 	BASE_JUMP  = humanoid.JumpPower
+    humanoid.WalkSpeed = BASE_SPEED + config.speedAdd
+    humanoid.JumpPower = BASE_JUMP + config.jumpAdd
 end)
 
--- ==================== GUI ====================
+task.spawn(function()
+    task.wait(0.5)
+    if humanoid then
+        humanoid.WalkSpeed = BASE_SPEED + config.speedAdd
+        humanoid.JumpPower = BASE_JUMP + config.jumpAdd
+    end
+end)
+
 local sg = Instance.new("ScreenGui")
 sg.Name           = "StatUI"
 sg.ResetOnSpawn   = false
@@ -122,7 +188,6 @@ shimmer.BorderSizePixel = 0
 shimmer.ZIndex = 10
 Instance.new("UICorner", shimmer).CornerRadius = UDim.new(1,0)
 
--- Header
 local hdr = Instance.new("Frame", main)
 hdr.Name = "Header"
 hdr.Size = UDim2.new(1,0,0,34)
@@ -155,10 +220,8 @@ titleLbl.TextColor3 = Color3.fromRGB(220,220,225)
 titleLbl.TextSize = 9
 titleLbl.Font = Enum.Font.GothamBold
 titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-titleLbl.TextTransparency = 0
 titleLbl.ZIndex = 3
 
--- ปุ่ม − พับ
 local toggleBtn = Instance.new("TextButton", hdr)
 toggleBtn.Size = UDim2.new(0,22,0,22)
 toggleBtn.Position = UDim2.new(1,-52,0.5,-11)
@@ -173,7 +236,6 @@ toggleBtn.AutoButtonColor = false
 toggleBtn.ZIndex = 3
 Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,6)
 
--- ปุ่ม × ลบ
 local closeBtn = Instance.new("TextButton", hdr)
 closeBtn.Size = UDim2.new(0,22,0,22)
 closeBtn.Position = UDim2.new(1,-26,0.5,-11)
@@ -196,7 +258,6 @@ divider.BackgroundTransparency = 0.9
 divider.BorderSizePixel = 0
 divider.ZIndex = 2
 
--- ===== Tab Bar =====
 local tabBar = Instance.new("Frame", main)
 tabBar.Size = UDim2.new(1,-24,0,24)
 tabBar.Position = UDim2.new(0,12,0,40)
@@ -221,7 +282,6 @@ end
 local tabStats = makeTab("STATS", 0)
 local tabAim   = makeTab("AIM", 0.5)
 
--- Content pages
 local pageStats = Instance.new("Frame", main)
 pageStats.Size = UDim2.new(1,0,0,FULL_HEIGHT-70)
 pageStats.Position = UDim2.new(0,0,0,70)
@@ -255,8 +315,7 @@ setTab(true)
 tabStats.MouseButton1Click:Connect(function() setTab(true) end)
 tabAim.MouseButton1Click:Connect(function() setTab(false) end)
 
--- ===== Slider factory =====
-local function makeSlider(parent, yPos, labelText, iconText, minV, maxV, onChange)
+local function makeSlider(parent, yPos, labelText, iconText, minV, maxV, initVal, onChange)
 	local row = Instance.new("Frame", parent)
 	row.Size = UDim2.new(1,-24,0,44)
 	row.Position = UDim2.new(0,12,0,yPos)
@@ -296,7 +355,7 @@ local function makeSlider(parent, yPos, labelText, iconText, minV, maxV, onChang
 	valL.Size = UDim2.new(0.42,-34,0,16)
 	valL.Position = UDim2.new(0.58,0,0,2)
 	valL.BackgroundTransparency = 1
-	valL.Text = "+0"
+	valL.Text = "+"..tostring(initVal)
 	valL.TextColor3 = Color3.fromRGB(225,225,230)
 	valL.TextSize = 9
 	valL.Font = Enum.Font.GothamBold
@@ -313,7 +372,7 @@ local function makeSlider(parent, yPos, labelText, iconText, minV, maxV, onChang
 	Instance.new("UICorner", track).CornerRadius = UDim.new(1,0)
 
 	local fill = Instance.new("Frame", track)
-	fill.Size = UDim2.new(0,0,1,0)
+	fill.Size = UDim2.new(math.clamp((initVal - minV)/(maxV - minV), 0, 1),0,1,0)
 	fill.BackgroundColor3 = Color3.fromRGB(200,200,210)
 	fill.BorderSizePixel = 0
 	fill.ZIndex = 4
@@ -322,7 +381,7 @@ local function makeSlider(parent, yPos, labelText, iconText, minV, maxV, onChang
 	local thumb = Instance.new("Frame", track)
 	thumb.Size = UDim2.new(0,12,0,12)
 	thumb.AnchorPoint = Vector2.new(0.5,0.5)
-	thumb.Position = UDim2.new(0,0,0.5,0)
+	thumb.Position = UDim2.new(math.clamp((initVal - minV)/(maxV - minV), 0, 1),0,0.5,0)
 	thumb.BackgroundColor3 = Color3.fromRGB(240,240,245)
 	thumb.BorderSizePixel = 0
 	thumb.ZIndex = 5
@@ -337,7 +396,7 @@ local function makeSlider(parent, yPos, labelText, iconText, minV, maxV, onChang
 	dot.ZIndex = 6
 	Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
 
-	local dragging, targetPct, currentPct = false, 0, 0
+	local dragging, targetPct, currentPct = false, (initVal - minV)/(maxV - minV), (initVal - minV)/(maxV - minV)
 
 	local function update(pos)
 		local ax = track.AbsolutePosition.X
@@ -376,14 +435,17 @@ local function makeSlider(parent, yPos, labelText, iconText, minV, maxV, onChang
 	end)
 end
 
-makeSlider(pageStats, 4,  "SPEED  base "..BASE_SPEED, "SPD", ADD_MIN, ADD_MAX, function(v)
+makeSlider(pageStats, 4,  "SPEED  base "..BASE_SPEED, "SPD", ADD_MIN, ADD_MAX, config.speedAdd, function(v)
+	config.speedAdd = v
 	if humanoid then humanoid.WalkSpeed = BASE_SPEED + v end
+	saveConfig()
 end)
-makeSlider(pageStats, 52, "JUMP   base "..BASE_JUMP,  "JMP", ADD_MIN, ADD_MAX, function(v)
+makeSlider(pageStats, 52, "JUMP   base "..BASE_JUMP,  "JMP", ADD_MIN, ADD_MAX, config.jumpAdd, function(v)
+	config.jumpAdd = v
 	if humanoid then humanoid.JumpPower = BASE_JUMP + v end
+	saveConfig()
 end)
 
--- ===== ปุ่มสร้างใน AIM page =====
 local function makeToggleBtn(parent, yPos, labelOn, labelOff, initVal, onChange)
 	local btn = Instance.new("TextButton", parent)
 	btn.Size = UDim2.new(1,-24,0,22)
@@ -419,18 +481,19 @@ local function makeToggleBtn(parent, yPos, labelOn, labelOff, initVal, onChange)
 	return btn
 end
 
--- HIGHLIGHT toggle
-makeToggleBtn(pageAim, 4, "HIGHLIGHT : ON", "HIGHLIGHT : OFF", true, function(v)
+makeToggleBtn(pageAim, 4, "HIGHLIGHT : ON", "HIGHLIGHT : OFF", config.highlightOn, function(v)
 	highlightOn = v
+	config.highlightOn = v
 	setHighlightAll(v)
+	saveConfig()
 end)
 
--- SAFE toggle
-makeToggleBtn(pageAim, 32, "SAFE : ON", "SAFE : OFF", false, function(v)
+makeToggleBtn(pageAim, 32, "SAFE : ON", "SAFE : OFF", config.NO_FRIEND_AIM, function(v)
 	NO_FRIEND_AIM = v
+	config.NO_FRIEND_AIM = v
+	saveConfig()
 end)
 
--- FOV +/−
 local fovLabel = Instance.new("TextLabel", pageAim)
 fovLabel.Size = UDim2.new(1,-24,0,14)
 fovLabel.Position = UDim2.new(0,12,0,62)
@@ -442,7 +505,7 @@ fovLabel.Font = Enum.Font.GothamBold
 fovLabel.TextXAlignment = Enum.TextXAlignment.Left
 fovLabel.ZIndex = 3
 
-local Circle, UIStroke, CenterDot  -- declare ก่อน ใช้ใน updateFOV
+local Circle, UIStroke, CenterDot
 
 local function updateFOV()
 	fovLabel.Text = "FOV : "..CIRCLE_RADIUS
@@ -482,14 +545,17 @@ sp.Color=Color3.fromRGB(180,180,180);sp.Thickness=1;sp.Transparency=0.3
 
 fovMinus.MouseButton1Click:Connect(function()
 	CIRCLE_RADIUS = math.max(50, CIRCLE_RADIUS - 10)
+	config.CIRCLE_RADIUS = CIRCLE_RADIUS
 	updateFOV()
+	saveConfig()
 end)
 fovPlus.MouseButton1Click:Connect(function()
 	CIRCLE_RADIUS = math.min(400, CIRCLE_RADIUS + 10)
+	config.CIRCLE_RADIUS = CIRCLE_RADIUS
 	updateFOV()
+	saveConfig()
 end)
 
--- ===== Collapse =====
 local collapsed = false
 toggleBtn.MouseButton1Click:Connect(function()
 	collapsed = not collapsed
@@ -499,14 +565,12 @@ toggleBtn.MouseButton1Click:Connect(function()
 	}):Play()
 end)
 
--- ===== Close =====
 closeBtn.MouseButton1Click:Connect(function()
 	scriptActive = false
 	sg:Destroy()
 	if _G.AimbotGui then _G.AimbotGui:Destroy() end
 end)
 
--- ===== Drag =====
 local isDragging, dragStart, startPos = false, nil, nil
 hdr.InputBegan:Connect(function(i)
 	if i.UserInputType == Enum.UserInputType.MouseButton1
@@ -526,8 +590,6 @@ UserInputService.InputEnded:Connect(function(i)
 	if i.UserInputType == Enum.UserInputType.MouseButton1
 	or i.UserInputType == Enum.UserInputType.Touch then isDragging = false end
 end)
-
--- ==================== AIMBOT GUI ====================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AimbotGui"
 ScreenGui.ResetOnSpawn = false
@@ -558,7 +620,6 @@ CenterDot.Active = false
 CenterDot.Parent = ScreenGui
 Instance.new("UICorner", CenterDot).CornerRadius = UDim.new(1,0)
 
--- ==================== AIMBOT FUNCTIONS ====================
 local function getHeadPosition(char)
 	local head = char:FindFirstChild("Head")
 	if head then return head.Position end
@@ -637,7 +698,6 @@ local function fireWeapon()
 	end
 end
 
--- ==================== TOGGLE double-click วงกลม ====================
 local lockedTarget  = nil
 local lastFireTime  = 0
 local lastClickTime = 0
@@ -645,6 +705,8 @@ local DOUBLE_CLICK_THRESHOLD = 0.35
 
 local function setEnabled(val)
 	aimbotEnabled = val
+    config.aimbotEnabled = val
+    saveConfig()
 	local color = val and Color3.fromRGB(255,50,50) or Color3.fromRGB(100,100,100)
 	UIStroke.Color = color
 	CenterDot.BackgroundColor3 = color
@@ -673,7 +735,6 @@ UserInputService.InputBegan:Connect(function(input)
 	end
 end)
 
--- ==================== MAIN LOOP ====================
 RunService.Heartbeat:Connect(function()
 	if not scriptActive then return end
 	if not aimbotEnabled then lockedTarget = nil; return end
@@ -696,4 +757,5 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
-setEnabled(true)
+setEnabled(aimbotEnabled)
+updateFOV()
